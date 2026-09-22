@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Post Job{% endblock %}
+{% block content %}
+<div class="py-4"><div class="row justify-content-center"><div class="col-lg-8">
+    <div class="card border-0 shadow-lg"><div class="card-header bg-transparent border-bottom border-secondary"><h4 class="mb-0 fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Post Job/Internship</h4></div>
+    <div class="card-body p-4"><form method="POST"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><div class="row g-3">
+        <div class="col-md-8"><label class="form-label">Title *</label><input type="text" name="title" class="form-control bg-dark border-secondary text-white" required></div>
+        <div class="col-md-4"><label class="form-label">Type</label><select name="job_type" class="form-select bg-dark border-secondary text-white"><option value="job">Job</option><option value="internship">Internship</option></select></div>
+        <div class="col-md-6"><label class="form-label">Company *</label><input type="text" name="company" class="form-control bg-dark border-secondary text-white" required></div>
+        <div class="col-md-6"><label class="form-label">Location</label><input type="text" name="location" class="form-control bg-dark border-secondary text-white"></div>
+        <div class="col-12"><label class="form-label">Description *</label><textarea name="description" class="form-control bg-dark border-secondary text-white" rows="5" required></textarea></div>
+        <div class="col-md-6"><label class="form-label">Salary</label><input type="text" name="salary" class="form-control bg-dark border-secondary text-white"></div>
+        <div class="col-md-6"><label class="form-label">Deadline</label><input type="date" name="deadline" class="form-control bg-dark border-secondary text-white"></div>
+        <div class="col-12"><label class="form-label">Requirements (comma-separated)</label><input type="text" name="requirements" class="form-control bg-dark border-secondary text-white"></div>
+    </div><div class="d-flex justify-content-between mt-4"><a href="{{ url_for('jobs.jobs_page') }}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Post</button></div></form></div></div>
+</div></div></div>
+{% endblock %}

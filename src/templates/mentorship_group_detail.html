@@ -1,0 +1,633 @@
+{#
+  Mentorship Group Detail page for BGSBU Interacts
+  Shows group info, discussion, announcements, tasks, and resources tabs
+  Includes members sidebar, pending member approval (mentor), and announce modal
+  Mentor can create tasks assigned to specific members
+#}
+{% extends "base.html" %}
+{% block title %}{{ group.name }} - Group{% endblock %}
+{% block content %}
+<style>
+.timeline-item { position: relative; padding-left: 28px; padding-bottom: 20px; }
+.timeline-item::before { content: ''; position: absolute; left: 10px; top: 8px; bottom: 0; width: 2px; background: var(--bs-secondary); }
+.timeline-item:last-child::before { display: none; }
+.timeline-item .dot { position: absolute; left: 4px; top: 6px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid; background: var(--bs-dark); }
+.msg-bubble { background: rgba(var(--bs-dark-rgb), 0.6); border-radius: 12px; padding: 10px 14px; max-width: 85%; }
+.msg-bubble-own { background: rgba(var(--bs-primary-rgb), 0.15); }
+.nav-tabs .nav-link { border: none; border-bottom: 2px solid transparent; color: #adb5bd !important; }
+.nav-tabs .nav-link:hover { border-bottom-color: #6c757d; color: #fff !important; }
+.nav-tabs .nav-link.active { border-bottom-color: var(--bs-primary); color: #fff !important; background: transparent; }
+.task-card { transition: transform 0.15s ease; }
+.task-card:hover { transform: translateX(4px); }
+</style>
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <div class="d-flex gap-2 mb-1">
+                <a href="{{ url_for('mentorship.mentorship_groups') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Groups</a>
+                <a href="{{ url_for('mentorship.mentorship_dashboard') }}" class="btn btn-outline-info btn-sm"><i class="bi bi-speedometer2"></i></a>
+                {% if is_mentor %}
+                <button class="btn btn-outline-danger btn-sm ms-auto" onclick="confirmDeleteGroup()"><i class="bi bi-trash me-1"></i>Delete Group</button>
+                {% else %}
+                <button class="btn btn-outline-warning btn-sm ms-auto" onclick="confirmLeaveGroup()"><i class="bi bi-box-arrow-left me-1"></i>Leave Group</button>
+                {% endif %}
+            </div>
+            <h3 class="fw-bold mb-0 mt-2"><i class="bi bi-people-fill text-primary me-2"></i>{{ group.name }}</h3>
+        </div>
+    </div>
+
+    {# ==================== MAIN CONTENT + SIDEBAR ==================== #}
+    <div class="row g-4">
+        <div class="col-lg-8">
+            {# ---- Group Info Card ---- #}
+            <div class="card border-0 shadow-sm border-start border-primary border-3 mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not group.mentor_pic or group.mentor_pic=='default.svg' else '/uploads/'+group.mentor_pic }}" class="rounded-circle border border-secondary" width="48" height="48" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div>
+                            <p class="mb-0"><strong>{{ group.mentor_name }}</strong> <span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">Mentor</span></p>
+                            <small class="text-muted"><i class="bi bi-envelope me-1"></i>{{ group.mentor_email }}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        {% if group.domain %}<span class="badge bg-info bg-opacity-25 text-info border border-info">{{ group.domain }}</span>{% endif %}
+                        <span class="badge bg-primary bg-opacity-25 text-primary border border-primary"><i class="bi bi-people me-1"></i>{{ members|length }}/{{ group.max_members or '∞' }} members</span>
+                    </div>
+                    {% if group.description %}<p class="text-muted mt-3 mb-0">{{ group.description }}</p>{% endif %}
+                </div>
+            </div>
+
+            {# ---- Tabs ---- #}
+            <ul class="nav nav-tabs border-secondary mb-3">
+                <li class="nav-item"><a class="nav-link active text-white border-primary border-bottom-0" data-bs-toggle="pill" href="#discussion"><i class="bi bi-chat-dots me-1"></i>Discussion</a></li>
+                <li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#announcements"><i class="bi bi-megaphone me-1"></i>Announcements <span class="badge bg-info ms-1">{{ announcements|length }}</span></a></li>
+                <li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#tasks"><i class="bi bi-list-task me-1"></i>Tasks <span class="badge bg-warning text-dark ms-1">{{ tasks|length }}</span></a></li>
+                <li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#resources"><i class="bi bi-book me-1"></i>Resources</a></li>
+            </ul>
+
+            {# ---- Tab Content ---- #}
+            <div class="tab-content">
+                {# -- Discussion Tab -- #}
+                <div class="tab-pane fade show active" id="discussion">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-bottom border-secondary">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-chat-dots me-2"></i>Group Discussion</h5>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 520px; overflow-y: auto;" id="discussionMessages">
+                            {% if messages %}
+                                {% for m in messages %}
+                                {% set can_del = m.user_id == session.user_id or is_mentor %}
+                                <div class="px-3 py-2 {% if m.user_id == session.user_id %}bg-dark bg-opacity-50{% endif %} group-message-row" data-msg-id="{{ m.id }}">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <img src="{{ url_for('static', filename='images/default.svg') if not m.user_pic or m.user_pic=='default.svg' else '/uploads/'+m.user_pic }}" class="rounded-circle flex-shrink-0 border border-secondary" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                        <div class="msg-bubble {% if m.user_id == session.user_id %}msg-bubble-own{% else %}bg-dark{% endif %} position-relative">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <strong class="small">{{ m.user_name }}</strong>
+                                                {% if m.user_id == group.mentor_id %}<span class="badge bg-warning text-dark" style="font-size:0.55rem;">Mentor</span>{% endif %}
+                                                <small class="text-muted ms-auto" style="font-size:0.65rem;">{{ m.created_at.strftime('%b %d, %H:%M') if m.created_at else '' }}</small>
+                                                {% if can_del %}
+                                                <button class="btn btn-sm btn-link text-danger p-0 ms-1" style="font-size:0.65rem;opacity:0.4" onclick="deleteGroupMessage({{ m.id }})" title="Delete message"><i class="bi bi-trash"></i></button>
+                                                {% endif %}
+                                            </div>
+                                            <p class="mb-0 small" style="white-space: pre-wrap;">{{ m.content }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-chat fs-1 d-block mb-2"></i>
+                                <p>No messages yet. Start the discussion!</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {# -- Message Input -- #}
+                        {% if is_member or is_mentor %}
+                        <div class="card-footer bg-transparent border-top border-secondary">
+                            <div class="input-group">
+                                <input type="text" class="form-control bg-secondary text-white border-secondary" id="messageInput" placeholder="Type a message..." maxlength="2000">
+                                <button class="btn btn-primary" onclick="sendMessage()"><i class="bi bi-send"></i></button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# -- Announcements Tab -- #}
+                <div class="tab-pane fade" id="announcements">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-megaphone me-2"></i>Announcements</h5>
+                            {% if is_mentor %}
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#announceModal"><i class="bi bi-plus-lg me-1"></i>Post</button>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if announcements %}
+                                {% for a in announcements %}
+                                <div class="border-start border-warning border-3 ps-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <h6 class="fw-bold mb-1"><i class="bi bi-megaphone text-warning me-1"></i>{{ a.title }}</h6>
+                                        <small class="text-muted" style="font-size:0.7rem;">{{ a.created_at.strftime('%b %d, %Y') if a.created_at else '' }}</small>
+                                    </div>
+                                    <p class="text-muted small mb-1" style="white-space: pre-wrap;">{{ a.content }}</p>
+                                    <small class="text-muted">by <strong>{{ a.user_name }}</strong></small>
+                                </div>
+                                {% if not loop.last %}<hr class="border-secondary my-3">{% endif %}
+                                {% endfor %}
+                            {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-megaphone fs-1 d-block mb-2"></i>
+                                <p>No announcements yet</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# -- Tasks Tab -- #}
+                <div class="tab-pane fade" id="tasks">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-list-task me-2"></i>Tasks</h5>
+                            {% if is_mentor %}
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createTaskModal"><i class="bi bi-plus-lg me-1"></i>Create Task</button>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-0">
+                            {% if tasks %}
+                                {% for t in tasks %}
+                                <div class="border-bottom border-secondary px-3 py-3 task-card">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div class="flex-grow-1 min-width-0">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <h6 class="fw-bold mb-0 small">{{ t.title }}</h6>
+                                                <span class="badge bg-{{ 'warning text-dark' if t.status=='pending' else 'info' if t.status=='in_progress' else 'success' if t.status=='completed' else 'danger' }}" style="font-size:0.6rem;">
+                                                    {{ t.status|replace('_',' ')|capitalize }}
+                                                </span>
+                                            </div>
+                                            {% if t.description %}<p class="text-muted small mb-1">{{ t.description[:100] }}{% if t.description|length > 100 %}...{% endif %}</p>{% endif %}
+                                            <div class="d-flex gap-3 small text-muted">
+                                                <span><i class="bi bi-person me-1"></i>{{ t.assigned_name or 'Unassigned' }}</span>
+                                                {% if t.deadline %}<span><i class="bi bi-calendar me-1"></i>{{ t.deadline.strftime('%b %d, %Y') }}</span>{% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-list-task fs-1 d-block mb-2"></i>
+                                <p>No tasks assigned yet</p>
+                                {% if is_mentor %}
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createTaskModal"><i class="bi bi-plus-lg me-1"></i>Assign First Task</button>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# -- Resources Tab -- #}
+                <div class="tab-pane fade" id="resources">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-book me-2"></i>Resources</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if resources %}
+                                {% for r in resources %}
+                                <div class="d-flex align-items-center justify-content-between border-bottom border-secondary pb-2 mb-2 resource-item">
+                                    <div class="min-width-0 flex-grow-1 me-2">
+                                        <h6 class="mb-0 small fw-bold">
+                                            <i class="bi bi-{{ 'filetype-pdf' if r.resource_type=='pdf' else 'link-45deg' if r.resource_type=='link' else 'journal-text' if r.resource_type=='note' else 'play-circle' if r.resource_type=='video' else 'file-earmark' }} me-1 text-{{ 'danger' if r.resource_type=='pdf' else 'primary' }}"></i>
+                                            {{ r.title }}
+                                        </h6>
+                                        {% if r.description %}<small class="text-muted">{{ r.description[:80] }}{% if r.description|length>80 %}...{% endif %}</small>{% endif %}
+                                    </div>
+                                    <div class="d-flex gap-2 flex-shrink-0 align-items-center">
+                                        <span class="badge bg-{{ 'danger' if r.resource_type=='pdf' else 'primary' if r.resource_type=='link' else 'success' if r.resource_type=='note' else 'warning' if r.resource_type=='video' else 'info' }} bg-opacity-25 text-{{ 'danger' if r.resource_type=='pdf' else 'primary' if r.resource_type=='link' else 'success' if r.resource_type=='note' else 'warning' if r.resource_type=='video' else 'info' }}" style="font-size:0.6rem;">
+                                            {{ r.resource_type|capitalize }}
+                                        </span>
+                                        {% if r.url %}<a href="{{ r.url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-journal fs-1 d-block mb-2"></i>
+                                <p>No resources shared yet</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ==================== SIDEBAR ==================== #}
+        <div class="col-lg-4">
+            {# ---- Members Card ---- #}
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-people me-2"></i>Members ({{ members|length }})</h5>
+                    {% if is_mentor %}
+                    <button class="btn btn-sm btn-outline-primary" onclick="showAddMemberModal()" title="Add student to group"><i class="bi bi-person-plus"></i></button>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                    {% if members %}
+                    <div class="list-group list-group-flush">
+                        {% for m in members %}
+                        <div class="list-group-item bg-transparent d-flex align-items-center gap-2 border-bottom border-secondary">
+                            <img src="{{ url_for('static', filename='images/default.svg') if not m.profile_pic or m.profile_pic=='default.svg' else '/uploads/'+m.profile_pic }}" class="rounded-circle border border-secondary" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                            <div class="flex-grow-1 min-width-0">
+                                <small class="fw-bold d-block text-truncate">{{ m.name }}</small>
+                                <small class="text-muted" style="font-size:0.65rem;">{{ m.role|capitalize }}</small>
+                            </div>
+                            {% if m.user_id==group.mentor_id %}
+                            <span class="badge bg-warning text-dark" style="font-size:0.55rem;">Mentor</span>
+                            {% elif is_mentor %}
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:0.65rem;" onclick="confirmRemoveMember({{ m.user_id }}, this)" title="Remove member"><i class="bi bi-x-lg"></i></button>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted"><small>No members</small></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ---- Pending Members Card (Mentor only) ---- #}
+            {% if is_mentor and pending_members %}
+            <div class="card border-0 shadow-sm border-start border-warning border-3 mb-3">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold text-warning"><i class="bi bi-clock-history me-2"></i>Pending ({{ pending_members|length }})</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for m in pending_members %}
+                        <div class="list-group-item bg-transparent border-bottom border-secondary">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <img src="{{ url_for('static', filename='images/default.svg') if not m.profile_pic or m.profile_pic=='default.svg' else '/uploads/'+m.profile_pic }}" class="rounded-circle border border-secondary" width="28" height="28" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                <div class="flex-grow-1 min-width-0">
+                                    <small class="fw-bold d-block text-truncate">{{ m.name }}</small>
+                                    <small class="text-muted" style="font-size:0.65rem;">{{ m.email }}</small>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-success flex-fill" onclick="approveMember({{ m.id }}, 'approve')"><i class="bi bi-check-lg"></i></button>
+                                <button class="btn btn-sm btn-outline-danger flex-fill" onclick="approveMember({{ m.id }}, 'reject')"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ==================== POST ANNOUNCEMENT MODAL (Mentor only) ==================== #}
+{% if is_mentor %}
+<div class="modal fade" id="announceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-megaphone text-warning me-2"></i>New Announcement</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="announceTitle" maxlength="200" placeholder="Announcement title">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Content <span class="text-danger">*</span></label>
+                    <textarea class="form-control bg-secondary text-white border-secondary" id="announceContent" rows="4" placeholder="Write your announcement..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="postAnnouncement()"><i class="bi bi-megaphone me-1"></i>Post</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ==================== CREATE TASK MODAL (Mentor only) ==================== #}
+{% if is_mentor %}
+<div class="modal fade" id="createTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-list-task text-primary me-2"></i>Create Group Task</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Task Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="taskTitle" placeholder="e.g. Research paper review" maxlength="200">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-journal-text me-1"></i>Description</label>
+                    <textarea class="form-control bg-secondary text-white border-secondary" id="taskDescription" rows="3" placeholder="Detailed description of the task..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-person me-1"></i>Assign To</label>
+                    <select class="form-select bg-secondary text-white border-secondary" id="taskAssignedTo">
+                        <option value="">-- Select Member --</option>
+                        {% for m in members %}
+                        <option value="{{ m.user_id }}">{{ m.name }} ({{ m.role|capitalize }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-calendar me-1"></i>Deadline</label>
+                    <input type="date" class="form-control bg-secondary text-white border-secondary" id="taskDeadline">
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createGroupTask()"><i class="bi bi-check-lg me-1"></i>Create Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ==================== ADD MEMBER MODAL (Mentor only) ==================== #}
+{% if is_mentor %}
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Add Student to Group</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Search Student <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="addMemberSearch" placeholder="Type name or email..." oninput="searchStudents(this.value)">
+                </div>
+                <div id="addMemberResults" class="list-group list-group-flush" style="max-height:300px;overflow-y:auto;">
+                    <div class="text-center text-muted py-3"><small>Type to search for students</small></div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAddMemberModal() {
+    document.getElementById('addMemberSearch').value = '';
+    document.getElementById('addMemberResults').innerHTML = '<div class="text-center text-muted py-3"><small>Type to search for students</small></div>';
+    new bootstrap.Modal(document.getElementById('addMemberModal')).show();
+}
+
+function searchStudents(q) {
+    q = q.trim();
+    if (q.length < 2) {
+        document.getElementById('addMemberResults').innerHTML = '<div class="text-center text-muted py-3"><small>Type at least 2 characters</small></div>';
+        return;
+    }
+    fetch('/api/mentorship/groups/search-students?q=' + encodeURIComponent(q) + '&group_id={{ group.id }}')
+        .then(r => r.json()).then(d => {
+            var el = document.getElementById('addMemberResults');
+            if (!d.success || !d.users.length) {
+                el.innerHTML = '<div class="text-center text-muted py-3"><small>No students found</small></div>';
+                return;
+            }
+            el.innerHTML = d.users.map(function(u) {
+                return '<div class="list-group-item bg-transparent border-secondary d-flex align-items-center gap-2">' +
+                    '<img src="{{ url_for("static", filename="images/default.svg") }}" class="rounded-circle border border-secondary" width="28" height="28" style="object-fit:cover">' +
+                    '<div class="flex-grow-1"><small class="fw-bold d-block">' + u.name + '</small><small class="text-muted">' + u.email + '</small></div>' +
+                    '<button class="btn btn-sm btn-primary" onclick="addStudentToGroup(' + u.id + ', this)"><i class="bi bi-plus-lg"></i></button></div>';
+            }).join('');
+        }).catch(function() { showToast('Search failed', 'danger'); });
+}
+
+function addStudentToGroup(userId, btn) {
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    fetch('/api/mentorship/groups/add-member', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ group_id: {{ group.id }}, user_id: userId })
+    }).then(r => r.json()).then(function(d) {
+        if (d.success) {
+            showToast(d.message, 'success');
+            setTimeout(function(){ location.reload(); }, 1000);
+        } else {
+            showToast(d.message, 'danger');
+            btn.disabled = false; btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+        }
+    }).catch(function() {
+        showToast('Error adding member', 'danger');
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+    });
+}
+</script>
+{% endif %}
+
+{# ==================== CONFIRM MODAL (shared by mentor and members) ==================== #}
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold" id="confirmModalTitle"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmModalBtn"><i class="bi bi-check-lg me-1"></i>Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# -- Group Detail JavaScript -- #}
+<script>
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+    if (!content) return;
+    input.disabled = true;
+    fetch('/api/mentorship/groups/send-message', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ group_id: {{ group.id }}, content: content })
+    }).then(r => r.json()).then(d => {
+        input.disabled = false;
+        if (d.success) { input.value = ''; setTimeout(() => location.reload(), 500); }
+        else { showToast(d.message, 'danger'); }
+    }).catch(() => { input.disabled = false; showToast('Error sending message', 'danger'); });
+}
+
+function postAnnouncement() {
+    const title = document.getElementById('announceTitle').value.trim();
+    const content = document.getElementById('announceContent').value.trim();
+    if (!title || !content) { showToast('Title and content required', 'warning'); return; }
+    const btn = document.querySelector('#announceModal .btn-warning');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Posting...';
+    fetch('/api/mentorship/groups/announce', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ group_id: {{ group.id }}, title: title, content: content })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-megaphone me-1"></i>Post';
+        if (d.success) { showToast('Announcement posted!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('announceModal')).hide();
+            setTimeout(() => location.reload(), 1000);
+        } else { showToast(d.message, 'danger'); }
+    }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-megaphone me-1"></i>Post'; showToast('Error', 'danger'); });
+}
+
+function approveMember(membershipId, action) {
+    fetch('/api/mentorship/groups/approve-member', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ membership_id: membershipId, action: action })
+    }).then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'success'); setTimeout(() => location.reload(), 1000); }
+        else { showToast(d.message, 'danger'); }
+    }).catch(() => showToast('Error', 'danger'));
+}
+
+function createGroupTask() {
+    const title = document.getElementById('taskTitle').value.trim();
+    if (!title) { showToast('Task title is required', 'warning'); return; }
+    const assignedTo = document.getElementById('taskAssignedTo').value;
+    const deadline = document.getElementById('taskDeadline').value;
+    const description = document.getElementById('taskDescription').value.trim();
+    const btn = document.querySelector('#createTaskModal .btn-primary');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+    fetch('/api/mentorship/groups/create-task', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            group_id: {{ group.id }},
+            title: title,
+            description: description,
+            assigned_to: assignedTo || null,
+            deadline: deadline || null
+        })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Task';
+        if (d.success) { showToast('Task created!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createTaskModal')).hide();
+            setTimeout(() => location.reload(), 1000);
+        } else { showToast(d.message, 'danger'); }
+    }).catch(() => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Task';
+        showToast('Error creating task', 'danger');
+    });
+}
+
+// Scroll to bottom of discussion on load
+var disc = document.getElementById('discussionMessages');
+if (disc) { disc.scrollTop = disc.scrollHeight; }
+
+function deleteGroupMessage(messageId) {
+    customConfirm('Delete this message?',function(confirmed){
+    if(!confirmed) return;
+    fetch('/api/mentorship/groups/delete-message', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message_id: messageId })
+    }).then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'success'); var row = document.querySelector('.group-message-row[data-msg-id="' + messageId + '"]'); if (row) row.remove(); }
+        else { showToast(d.message, 'danger'); }
+    }).catch(function() { showToast('Error deleting message', 'danger'); });
+    });
+}
+
+{% if not is_mentor %}
+function confirmLeaveGroup() {
+    document.getElementById('confirmModalTitle').innerHTML = '<i class="bi bi-box-arrow-left text-warning me-2"></i>Leave Group';
+    document.getElementById('confirmModalMessage').innerHTML = 'Leave <strong>{{ group.name|e }}</strong>? You can rejoin later if the mentor approves.';
+    document.getElementById('confirmModalBtn').className = 'btn btn-warning';
+    document.getElementById('confirmModalBtn').onclick = function() {
+        document.getElementById('confirmModalBtn').disabled = true;
+        document.getElementById('confirmModalBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Leaving...';
+        fetch('/api/mentorship/groups/leave', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ group_id: {{ group.id }} })
+        }).then(r => r.json()).then(d => {
+            if (d.success) {
+                showToast(d.message, 'success');
+                setTimeout(function(){ window.location.href = '{{ url_for("mentorship.mentorship_groups") }}'; }, 1000);
+            } else { showToast(d.message, 'danger'); }
+            document.getElementById('confirmModalBtn').disabled = false;
+            document.getElementById('confirmModalBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm';
+            document.getElementById('confirmModalBtn').className = 'btn btn-danger';
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        }).catch(function() {
+            showToast('Error leaving group', 'danger');
+            document.getElementById('confirmModalBtn').disabled = false;
+            document.getElementById('confirmModalBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm';
+        });
+    };
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+{% endif %}
+
+{% if is_mentor %}
+var confirmAction = null;
+
+function confirmRemoveMember(userId, btn) {
+    var name = btn.closest('.list-group-item').querySelector('.fw-bold').textContent.trim();
+    document.getElementById('confirmModalTitle').innerHTML = '<i class="bi bi-person-x text-danger me-2"></i>Remove Member';
+    document.getElementById('confirmModalMessage').innerHTML = 'Remove <strong>' + name + '</strong> from this group?';
+    document.getElementById('confirmModalBtn').onclick = function() {
+        document.getElementById('confirmModalBtn').disabled = true;
+        document.getElementById('confirmModalBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Removing...';
+        fetch('/api/mentorship/groups/remove-member', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ group_id: {{ group.id }}, user_id: userId })
+        }).then(r => r.json()).then(d => {
+            if (d.success) { showToast(d.message, 'success'); setTimeout(function(){ location.reload(); }, 1000); }
+            else { showToast(d.message, 'danger'); }
+            document.getElementById('confirmModalBtn').disabled = false;
+            document.getElementById('confirmModalBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm';
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        }).catch(function() {
+            showToast('Error removing member', 'danger');
+            document.getElementById('confirmModalBtn').disabled = false;
+            document.getElementById('confirmModalBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm';
+        });
+    };
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+function confirmDeleteGroup() {
+    document.getElementById('confirmModalTitle').innerHTML = '<i class="bi bi-trash text-danger me-2"></i>Delete Group';
+    document.getElementById('confirmModalMessage').innerHTML = 'Delete <strong>{{ group.name|e }}</strong> and all its data?<br><small class="text-muted">All messages, tasks, and announcements will be permanently removed.</small>';
+    document.getElementById('confirmModalBtn').onclick = function() {
+        document.getElementById('confirmModalBtn').disabled = true;
+        document.getElementById('confirmModalBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+        fetch('/api/mentorship/groups/delete', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ group_id: {{ group.id }} })
+        }).then(r => r.json()).then(d => {
+            if (d.success) {
+                showToast(d.message, 'success');
+                setTimeout(function(){ window.location.href = '{{ url_for("mentorship.mentorship_groups") }}'; }, 1000);
+            } else { showToast(d.message, 'danger'); }
+            document.getElementById('confirmModalBtn').disabled = false;
+            document.getElementById('confirmModalBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm';
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        }).catch(function() {
+            showToast('Error deleting group', 'danger');
+            document.getElementById('confirmModalBtn').disabled = false;
+            document.getElementById('confirmModalBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirm';
+        });
+    };
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+{% endif %}
+</script>
+{% endblock %}

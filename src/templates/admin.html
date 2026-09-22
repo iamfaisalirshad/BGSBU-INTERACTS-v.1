@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div class="py-4">
+    <h3 class="fw-bold mb-4"><i class="bi bi-shield-lock text-warning me-2"></i>Admin Dashboard</h3>
+
+    {# ==================== USERS SECTION ==================== #}
+    <h5 class="fw-bold text-primary mb-2"><i class="bi bi-people me-2"></i>Users</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.dashboard_users_list') }}" class="card border-0 shadow-sm bg-primary bg-opacity-10 border-start border-primary border-3 text-decoration-none text-reset"><div class="card-body"><h3 class="fw-bold text-primary">{{ total_users }}</h3><small class="text-muted">Total Users</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.dashboard_students_list') }}" class="card border-0 shadow-sm bg-info bg-opacity-10 border-start border-info border-3 text-decoration-none text-reset"><div class="card-body"><h3 class="fw-bold text-info">{{ total_students }}</h3><small class="text-muted">Students</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.dashboard_alumni_list') }}" class="card border-0 shadow-sm bg-success bg-opacity-10 border-start border-success border-3 text-decoration-none text-reset"><div class="card-body"><h3 class="fw-bold text-success">{{ total_alumni }}</h3><small class="text-muted">Alumni</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.dashboard_pending_approvals') }}" class="card border-0 shadow-sm bg-warning bg-opacity-10 border-start border-warning border-3 text-decoration-none text-reset"><div class="card-body"><h3 class="fw-bold text-warning">{{ pending_approvals }}</h3><small class="text-muted">Pending Approval</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_transformation_requests') }}" class="card border-0 shadow-sm bg-info bg-opacity-10 border-start border-info border-3 text-decoration-none text-reset"><div class="card-body"><h3 class="fw-bold text-info">{{ total_transformation_requests }}</h3><small class="text-muted">Transformation Requests</small></div></a></div>
+    </div>
+
+    {# ==================== ENGAGEMENT SECTION ==================== #}
+    <h5 class="fw-bold text-info mb-2 mt-4"><i class="bi bi-activity me-2"></i>Engagement</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.dashboard_connections_list') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-people text-primary fs-3"></i><h5 class="mt-2">{{ total_connections }}</h5><small class="text-muted">Connections</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_messages_oversight') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-chat-dots text-success fs-3"></i><h5 class="mt-2">{{ total_messages }}</h5><small class="text-muted">Messages Sent</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_mentorship_management') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-person-hearts text-danger fs-3"></i><h5 class="mt-2">{{ total_mentorships }}</h5><small class="text-muted">Active Mentorships</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_groups_oversight') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-people-fill text-warning fs-3"></i><h5 class="mt-2">{{ total_groups }}</h5><small class="text-muted">Groups</small></div></a></div>
+    </div>
+
+    {# ==================== JOBS SECTION ==================== #}
+    <h5 class="fw-bold text-success mb-2 mt-4"><i class="bi bi-briefcase me-2"></i>Jobs</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_job_applications') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-journal-check text-success fs-3"></i><h5 class="mt-2">{{ pending_applications }}</h5><small class="text-muted">Job Applications</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_pending_jobs') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-hourglass-split text-warning fs-3"></i><h5 class="mt-2">{{ pending_job_posts }}</h5><small class="text-muted">Pending Approval</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_approved_jobs') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-briefcase text-info fs-3"></i><h5 class="mt-2">{{ total_jobs }}</h5><small class="text-muted">Approved Jobs</small></div></a></div>
+    </div>
+
+    {# ==================== SYSTEM SETTINGS SECTION ==================== #}
+    <h5 class="fw-bold text-warning mb-2 mt-4"><i class="bi bi-sliders me-2"></i>System Settings</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.admin_mentorship_management') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-person-workspace text-info fs-3"></i><h5 class="mt-2">Mentorship</h5><small class="text-muted">Manage Mentorships</small></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('admin.manage_protocols') }}" class="card border-0 shadow-sm text-decoration-none text-reset"><div class="card-body text-center"><i class="bi bi-sliders text-warning fs-3"></i><h5 class="mt-2">Protocols</h5><small class="text-muted">Manage Features</small></div></a></div>
+    </div>
+
+    {# ==================== RECENT ACTIVITY FEED ==================== #}
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-activity me-2"></i>Recent Activity</h5>
+        </div>
+        <div class="card-body p-3">
+            {% if recent_activity %}
+            <ul class="list-unstyled mb-0">
+                {% for a in recent_activity %}
+                <li class="d-flex align-items-start gap-3 py-2 border-bottom border-secondary border-opacity-25">
+                    {% if a.type == 'registration' %}
+                        <span class="badge bg-info rounded-circle p-2 mt-1" style="width:32px;height:32px"><i class="bi bi-person-plus"></i></span>
+                        <div><strong>{{ a.name }}</strong> joined as a new user <small class="text-muted d-block">{{ a.created_at }}</small></div>
+                    {% elif a.type == 'connection' %}
+                        <span class="badge bg-success rounded-circle p-2 mt-1" style="width:32px;height:32px"><i class="bi bi-link-45deg"></i></span>
+                        <div><strong>{{ a.name }}</strong> connected with <strong>{{ a.detail1 }}</strong> <small class="text-muted d-block">{{ a.created_at }}</small></div>
+                    {% elif a.type == 'job' %}
+                        <span class="badge bg-warning text-dark rounded-circle p-2 mt-1" style="width:32px;height:32px"><i class="bi bi-briefcase"></i></span>
+                        <div>New job posted: <strong>{{ a.name }}</strong> at {{ a.detail1 }} <small class="text-muted d-block">{{ a.created_at }}</small></div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted text-center mb-0 py-3">No recent activity</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

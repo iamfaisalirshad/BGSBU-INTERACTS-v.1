@@ -1,0 +1,116 @@
+{# =============================================================================
+   Dashboard List - Reusable admin list view for users/students/alumni with
+   search, role filter, pagination, and inline approve/toggle/delete actions.
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}{{ title }} - Admin Dashboard{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-people text-primary me-2"></i>{{ title }}</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> users</p>
+        </div>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Admin Dashboard</a>
+    </div>
+
+    {# ==================== SEARCH FORM ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-6">
+                    <input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search by name or email..." value="{{ search }}">
+                </div>
+                {% if list_type in ['users'] %}
+                <div class="col-md-3">
+                    <select name="role" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
+                        <option value="">All Roles</option>
+                        <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Students</option>
+                        <option value="alumni" {% if role_filter == 'alumni' %}selected{% endif %}>Alumni</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-{% if list_type in ['users'] %}3{% else %}6{% endif %}">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# ==================== USERS TABLE ==================== #}
+    {% if users %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead class="border-bottom border-secondary">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Role</th>
+                            <th>Roll No</th>
+                            <th>Department</th>
+                            {% if list_type == 'users' %}<th>Semester</th><th>Batch</th><th>Company</th><th>Job Title</th>{% endif %}
+                            {% if list_type == 'students' %}<th>Semester</th><th>Batch</th>{% endif %}
+                            {% if list_type == 'alumni' %}<th>Passing Year</th><th>Company</th><th>Job Title</th>{% endif %}
+                            <th>Registered On</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr id="user-{{ user.id }}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ url_for('static', filename='images/default.svg') if not user.profile_pic or user.profile_pic == 'default.svg' else '/uploads/'+user.profile_pic }}" class="rounded-circle" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                    <a href="{{ url_for('profile.view_profile', user_id=user.id) }}" class="text-decoration-none text-white">{{ user.name }}</a>
+                                </div>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.phone or '-' }}</td>
+                            <td><span class="badge bg-{{ 'info' if user.role == 'student' else 'success' }}">{{ user.role|capitalize }}</span></td>
+                            <td>{{ user.roll_number or '-' }}</td>
+                            <td>{{ user.department or '-' }}</td>
+                            {% if list_type == 'users' %}
+                            <td>{% if user.role == 'student' %}{% if user.student_year == 0 %}Degree Completed{% elif user.student_year %}Sem {{ user.student_year }}{% endif %}{% elif user.role == 'alumni' %}{% if user.passing_year %}{{ user.passing_year }}{% endif %}{% endif %}</td>
+                            <td>{% if user.role == 'student' %}{% if user.joining_year and user.passing_year %}{{ user.joining_year }}–{{ user.passing_year }}{% elif user.batch_year %}{{ user.batch_year }}{% else %}-{% endif %}{% else %}-{% endif %}</td>
+                            <td>{% if user.role != 'student' %}{{ user.company or '-' }}{% else %}-{% endif %}</td>
+                            <td>{% if user.role != 'student' %}{{ user.current_job_title or '-' }}{% else %}-{% endif %}</td>
+                            {% endif %}
+                            {% if list_type == 'students' %}
+                            <td>{% if user.student_year == 0 %}Degree Completed{% elif user.student_year %}Sem {{ user.student_year }}{% endif %}</td>
+                            <td>{% if user.joining_year and user.passing_year %}{{ user.joining_year }}–{{ user.passing_year }}{% elif user.batch_year %}{{ user.batch_year }}{% else %}-{% endif %}</td>
+                            {% endif %}
+                            {% if list_type == 'alumni' %}
+                            <td>{{ user.passing_year or '-' }}</td>
+                            <td>{{ user.company or '-' }}</td>
+                            <td>{{ user.current_job_title or '-' }}</td>
+                            {% endif %}
+                            <td><small class="text-muted">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '-' }}</small></td>
+                            <td>
+                                {% if user.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}
+                                {% if not user.is_approved %}<span class="badge bg-warning text-dark">Pending</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {# -- Empty State -- #}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-3"></i>
+            <p>No users found</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

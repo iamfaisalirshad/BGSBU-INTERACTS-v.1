@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Profile Transformation Requests{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-arrow-repeat text-primary me-2"></i>Profile Transformation Requests</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ students|length }}</strong> students requesting alumni conversion</p>
+        </div>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Admin Dashboard</a>
+    </div>
+
+    {% if students %}
+    <div class="table-responsive">
+        <table class="table table-dark table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Roll Number</th>
+                    <th>Department</th>
+                    <th>Joining Year</th>
+                    <th>Passing Year</th>
+                    <th>Phone</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr id="student-{{ s.id }}">
+                    <td>{{ loop.index }}</td>
+                    <td><a href="{{ url_for('profile.view_profile', user_id=s.id) }}" class="text-decoration-none">{{ s.name }}</a></td>
+                    <td>{{ s.email }}</td>
+                    <td>{{ s.roll_number or '-' }}</td>
+                    <td>{{ s.department or '-' }}</td>
+                    <td>{{ s.joining_year or '-' }}</td>
+                    <td>{{ s.passing_year or '-' }}</td>
+                    <td>{{ s.phone or '-' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="approveTransformation({{ s.id }})"><i class="bi bi-check-circle me-1"></i>Approve Conversion</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-arrow-repeat display-4 d-block mb-3"></i>
+            <p>No transformation requests pending</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function approveTransformation(id){
+    customConfirm('Convert this student to alumni? This cannot be undone.', function(confirmed){
+    if(!confirmed) return;
+    fetch('/api/admin/approve-transformation', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: id})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            const row = document.getElementById('student-' + id);
+            if(row) row.remove();
+            showToast('Student converted to alumni!', 'success');
+        } else {
+            showToast(d.message || 'Error converting student', 'danger');
+        }
+    });
+    });
+}
+</script>
+{% endblock %}

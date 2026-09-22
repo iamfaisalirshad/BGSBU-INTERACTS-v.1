@@ -1,0 +1,96 @@
+{# ============================================================ #}
+{# Template: chat.html                                            #}
+{# Description: Real-time chat interface with contact list on the #}
+{#   left and message area on the right. Supports file/link share.#}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Chat - BGSBU Interacts{% endblock %}
+{% block content %}
+{# ==================== CHAT LAYOUT ==================== #}
+<div class="py-4">
+    <div class="row g-0" style="height:calc(100vh - 120px)">
+        {# -- contact list -- #}
+        <div class="col-md-4 col-lg-3"><div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-chat-dots text-primary me-2"></i>Messages</h5>
+                <span id="requestBadge" class="badge bg-warning text-dark" style="display:none;cursor:pointer" onclick="toggleRequests()"><i class="bi bi-person-plus me-1"></i><span id="requestCount">0</span></span>
+            </div>
+            <div class="card-body p-0 overflow-auto" id="contactList">
+                <div id="pendingRequestsSection" style="display:none">
+                    <div class="p-2 bg-warning bg-opacity-10 border-bottom border-secondary"><small class="fw-bold text-warning px-2"><i class="bi bi-person-plus me-1"></i>Pending Requests</small></div>
+                    <div id="pendingRequestsList"></div>
+                </div>
+                <div id="conversationsList">
+                {% if connections %}{% for c in connections %}
+                <div class="chat-contact p-3 border-bottom border-secondary {{ 'active' if selected_user_id==c.id }}" data-user-id="{{ c.id }}" onclick="selectUser({{ c.id }},'{{ c.name }}','{{ c.profile_pic }}')">
+                    <div class="d-flex align-items-center">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not c.profile_pic or c.profile_pic=='default.svg' else '/uploads/'+c.profile_pic }}" class="rounded-circle me-3" width="45" height="45" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div class="flex-grow-1 min-width-0"><div class="d-flex justify-content-between"><h6 class="mb-0 text-truncate">{{ c.name }}</h6>{% if c.unread > 0 %}<span class="badge bg-primary rounded-pill">{{ c.unread }}</span>{% endif %}</div><small class="text-muted text-truncate d-block">{{ c.last_message or 'Start a conversation' }}</small></div>
+                    </div>
+                </div>
+                {% endfor %}{% else %}<div class="p-4 text-center text-muted"><i class="bi bi-chat display-4 d-block mb-2"></i><p>No conversations yet</p></div>{% endif %}
+                </div>
+            </div>
+        </div></div>
+        {# -- chat area -- #}
+        <div class="col-md-8 col-lg-9"><div class="card border-0 shadow-sm h-100 d-flex flex-column">
+            <div class="card-header bg-transparent border-bottom border-secondary" id="chatHeader">
+                <div id="chatUserInfo" style="display:none" class="d-flex align-items-center justify-content-between"><div class="d-flex align-items-center"><img id="chatUserPic" src="{{ url_for('static', filename='images/default.svg') }}" class="rounded-circle me-2" width="35" height="35" style="object-fit:cover"><h6 class="mb-0" id="chatUserName"></h6></div><button id="chatDeleteBtn" class="btn btn-sm btn-outline-danger" title="Delete conversation"><i class="bi bi-trash"></i></button></div>
+                <div id="chatPlaceholderHeader"><h6 class="mb-0 text-muted">Select a conversation</h6></div>
+            </div>
+            {# -- request mode form (shown when navigating to non-connected user) -- #}
+            {% if request_mode and request_target %}
+            <div id="requestModeArea" class="d-flex flex-column flex-grow-1">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center p-4" style="background:rgba(0,0,0,0.2)">
+                    <img src="{{ url_for('static', filename='images/default.svg') if not request_target.profile_pic or request_target.profile_pic=='default.svg' else '/uploads/'+request_target.profile_pic }}" class="rounded-circle mb-3" width="80" height="80" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                    <h5 class="fw-bold mb-1">{{ request_target.name }}</h5>
+                    <p class="text-muted mb-3">You are not connected. Send a message request to start chatting.</p>
+                    <div id="requestForm" class="w-100" style="max-width:500px">
+                        <textarea id="requestMessageInput" class="form-control bg-dark border-secondary text-white mb-3" rows="4" placeholder="Write a short message to introduce yourself..." maxlength="500"></textarea>
+                        <button class="btn btn-info w-100" onclick="sendChatRequest({{ request_target.id }})"><i class="bi bi-send me-1"></i>Send Request</button>
+                    </div>
+                    <div id="requestSentMessage" style="display:none" class="text-center">
+                        <i class="bi bi-check-circle text-success display-4 d-block mb-2"></i>
+                        <h5 class="text-success">Request Sent!</h5>
+                        <p class="text-muted">Waiting for {{ request_target.name }} to accept your request.</p>
+                        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="card-body flex-grow-1 overflow-auto p-3" id="chatMessages" style="background:rgba(0,0,0,0.2)">
+                <div class="text-center text-muted py-5" id="chatPlaceholder"><i class="bi bi-chat-square-text display-1 d-block mb-3"></i><h5>Your messages</h5><p>Select a conversation to start chatting</p></div>
+            </div>
+            <div class="card-footer bg-transparent border-top border-secondary p-3" id="chatInputArea" style="display:none">
+                <div id="attachmentPreviews" class="mb-2" style="display:none"></div>
+                <div id="linkInputArea" class="mb-2 input-group" style="display:none">
+                    <input type="url" class="form-control bg-dark border-secondary text-white" id="linkUrlInput" placeholder="Paste a URL..." autocomplete="off">
+                    <input type="text" class="form-control bg-dark border-secondary text-white" id="linkDescInput" placeholder="Description (optional)" autocomplete="off">
+                    <button class="btn btn-success" onclick="addLink()"><i class="bi bi-check-lg"></i></button>
+                    <button class="btn btn-secondary" onclick="toggleLinkInput()"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <form id="messageForm" onsubmit="sendMessage(event)"><div class="input-group">
+                    <input type="text" class="form-control bg-dark border-secondary text-white" id="messageInput" placeholder="Type a message..." autocomplete="off">
+                    <button type="button" class="btn btn-secondary" onclick="triggerFileUpload()" title="Attach file"><i class="bi bi-paperclip"></i></button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleLinkInput()" title="Share link"><i class="bi bi-link-45deg"></i></button>
+                    <input type="file" id="fileInput" class="d-none" onchange="onFileSelected(event)">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send-fill"></i></button>
+                </div></form>
+            </div>
+        </div></div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script>
+let pendingRequests = [];
+function loadPendingRequests(){fetch('/api/message-requests').then(r=>r.json()).then(d=>{pendingRequests=d.received||[];const badge=document.getElementById('requestBadge');const count=document.getElementById('requestCount');if(pendingRequests.length>0){badge.style.display='inline-block';count.textContent=pendingRequests.length;}else{badge.style.display='none';}renderPendingRequests();}).catch(()=>{});}
+function renderPendingRequests(){const list=document.getElementById('pendingRequestsList');const section=document.getElementById('pendingRequestsSection');if(pendingRequests.length===0){section.style.display='none';return;}section.style.display='block';let html='';pendingRequests.forEach(r=>{html+=`<div class="p-2 border-bottom border-secondary bg-dark"><div class="d-flex align-items-center"><img src="${r.sender_pic&&r.sender_pic!=='default.svg'?'/uploads/'+r.sender_pic:'/static/images/default.svg'}" class="rounded-circle me-2" width="35" height="35" style="object-fit:cover" onerror="this.src='/static/images/default.svg'"><div class="flex-grow-1 min-width-0"><strong class="d-block text-truncate small">${escapeHtml(r.sender_name)}</strong>${r.message?`<small class="text-muted text-truncate d-block">"${escapeHtml(r.message.substring(0,60))}"</small>`:'<small class="text-muted">Wants to chat</small>'}</div><div class="ms-2 flex-shrink-0"><button class="btn btn-sm btn-success me-1" onclick="acceptRequest(${r.sender_id},this)" title="Accept"><i class="bi bi-check-lg"></i></button><button class="btn btn-sm btn-outline-danger" onclick="rejectRequest(${r.sender_id},this)" title="Decline"><i class="bi bi-x-lg"></i></button></div></div></div>`;});list.innerHTML=html;}
+function toggleRequests(){const section=document.getElementById('pendingRequestsSection');section.style.display=section.style.display==='none'?'block':'none';}
+function sendChatRequest(receiverId){const msg=document.getElementById('requestMessageInput')?.value?.trim()||'';fetch('/api/message-request/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver_id:receiverId,message:msg})}).then(r=>r.json()).then(d=>{if(d.success){document.getElementById('requestForm').style.display='none';document.getElementById('requestSentMessage').style.display='block';showToast('Request sent!','success');}else showToast(d.message,'warning');}).catch(()=>showToast('Failed to send request','danger'));}
+function acceptRequest(senderId,btn){fetch('/api/message-request/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_id:senderId})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Request accepted!','success');loadPendingRequests();loadConversations();}else showToast(d.message,'danger');}).catch(()=>showToast('Failed to accept','danger'));}
+function rejectRequest(senderId,btn){fetch('/api/message-request/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_id:senderId})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Request declined','info');loadPendingRequests();}else showToast(d.message,'danger');}).catch(()=>showToast('Failed to decline','danger'));}
+function loadConversations(){location.reload();}
+document.addEventListener('DOMContentLoaded',function(){loadPendingRequests();{% if selected_user_id %}const c=document.querySelector('[data-user-id="{{ selected_user_id }}"]');if(c)c.click();{% endif %}});
+</script>
+{% endblock %}

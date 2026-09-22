@@ -1,0 +1,51 @@
+{#
+  Jobs & Internships template for BGSBU Interacts
+  Lists job/internship postings with search/filter, apply modal, and role-based actions
+#}
+{% extends "base.html" %}
+{% block title %}Jobs & Internships{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0"><i class="bi bi-briefcase-fill text-primary me-2"></i>Jobs & Internships</h3>
+        {# -- Alumni Action Buttons -- #}
+        {% if session.get('role') == 'alumni' %}<div><a href="{{ url_for('jobs.post_job') }}" class="btn btn-primary me-2"><i class="bi bi-plus-lg me-1"></i>Post Job</a><a href="{{ url_for('jobs.my_postings') }}" class="btn btn-outline-primary"><i class="bi bi-list-ul me-1"></i>My Postings</a></div>{% endif %}
+    </div>
+    {# ==================== SEARCH & FILTER ==================== #}
+    <div class="card border-0 shadow-sm mb-4"><div class="card-body"><form method="GET" class="row g-3">
+        {# -- Search Input -- #}
+        <div class="col-md-5"><div class="input-group"><span class="input-group-text bg-dark border-secondary"><i class="bi bi-search"></i></span><input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search jobs..." value="{{ search }}"></div></div>
+        {# -- Job Type Filter -- #}
+        <div class="col-md-4"><select name="type" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()"><option value="">All Types</option><option value="job" {{ 'selected' if current_type=='job' }}>Jobs</option><option value="internship" {{ 'selected' if current_type=='internship' }}>Internships</option></select></div>
+        <div class="col-md-3"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter me-1"></i>Filter</button></div>
+    </form></div></div>
+    {# ==================== JOB LISTINGS ==================== #}
+    {% if jobs %}<div class="row g-3">{% for job in jobs %}<div class="col-lg-6">
+        {# -- Job Card -- #}
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+        {# -- Heading: Title, Company, Type Badge -- #}
+        <div class="d-flex justify-content-between align-items-start mb-2"><div><h5 class="fw-bold mb-1">{{ job.title }}</h5><p class="mb-1 text-muted"><i class="bi bi-building me-1"></i>{{ job.company }}{% if job.location %}<span class="ms-2"><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</span>{% endif %}</p></div><span class="badge bg-{{ 'primary' if job.job_type=='job' else 'info' }} py-2 px-3">{{ job.job_type|capitalize }}</span></div>
+        {# -- Description (truncated) -- #}
+        <p class="text-muted small mb-2">{{ job.description[:200] }}{{ '...' if job.description|length > 200 }}</p>
+        {# -- Salary -- #}
+        {% if job.salary %}<p class="mb-2"><i class="bi bi-cash me-1 text-success"></i><strong>{{ job.salary }}</strong></p>{% endif %}
+        {# -- Requirements Badges -- #}
+        {% if job.requirements %}<div class="mb-2">{% for r in job.requirements.split(',')[:4] %}<span class="badge bg-dark border border-secondary me-1 mb-1">{{ r.strip() }}</span>{% endfor %}</div>{% endif %}
+        {# -- Card Footer: Poster, Date, Applicants & Apply Button -- #}
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-secondary">
+            <small class="text-muted">{{ job.poster_name }} • {{ job.created_at.strftime('%b %d, %Y') if job.created_at else '' }}</small>
+            <div><span class="badge bg-secondary me-2">{{ job.application_count }} applicants</span>{% if job.id in applied_job_ids %}<span class="badge bg-success py-2 px-3">Applied</span>{% elif session.get('role')=='student' %}<button type="button" class="btn btn-sm btn-primary" onclick="applyJob({{ job.id }},this)"><i class="bi bi-send me-1"></i>Apply</button>{% endif %}</div>
+        </div>
+    </div></div></div>{% endfor %}</div>
+    {# -- Empty State -- #}
+    {% else %}<div class="text-center py-5 text-muted"><i class="bi bi-briefcase display-4 d-block mb-3"></i><p>No jobs found</p></div>{% endif %}
+</div>
+{# ==================== APPLY MODAL ==================== #}
+<div class="modal fade" id="applyModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content bg-dark"><div class="modal-header border-secondary"><h5 class="modal-title">Apply</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="form-label">Cover Letter (Optional)</label><textarea class="form-control bg-dark border-secondary text-white" id="coverLetter" rows="5"></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="submitApp">Submit</button></div></div></div></div>
+{# -- Application JavaScript -- #}
+<script>
+let curJob=null;
+function applyJob(id,btn){curJob=id;const m=new bootstrap.Modal(document.getElementById('applyModal'));m.show();document.getElementById('submitApp').onclick=function(){fetch('/api/apply-job',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:curJob,cover_letter:document.getElementById('coverLetter').value})}).then(r=>r.json()).then(d=>{m.hide();if(d.success){btn.innerHTML='<i class="bi bi-check me-1"></i>Applied';btn.className='btn btn-sm btn-success';btn.disabled=true;showToast('Applied!','success');}else{showToast(d.message,'danger');}});};}
+</script>
+{% endblock %}

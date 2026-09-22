@@ -1,0 +1,252 @@
+{# =============================================================================
+   Mentorship Detail - Admin view of a single mentorship with mentor/mentee
+   profiles, progress stats, session history, and accept/reject/complete actions.
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}Mentorship Detail - Admin{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0"><i class="bi bi-person-hearts text-primary me-2"></i>Mentorship Detail</h3>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    {# ==================== MENTOR AND MENTEE CARDS ==================== #}
+    <div class="row g-3 mb-4">
+        {# -- Mentor Card -- #}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm border-start border-info border-3">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-check text-info me-2"></i>Mentor</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not mentorship.mentor_pic or mentorship.mentor_pic=='default.svg' else '/uploads/'+mentorship.mentor_pic }}" class="rounded-circle" width="60" height="60" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div>
+                            <h5 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=mentorship.mentor_id) }}" class="text-decoration-none text-white">{{ mentorship.mentor_name }}</a></h5>
+                            <p class="text-muted mb-0"><i class="bi bi-envelope me-1"></i>{{ mentorship.mentor_email }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# -- Mentee Card -- #}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm border-start border-success border-3">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-fill text-success me-2"></i>Mentee</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not mentorship.mentee_pic or mentorship.mentee_pic=='default.svg' else '/uploads/'+mentorship.mentee_pic }}" class="rounded-circle" width="60" height="60" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div>
+                            <h5 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=mentorship.mentee_id) }}" class="text-decoration-none text-white">{{ mentorship.mentee_name }}</a></h5>
+                            <p class="text-muted mb-0"><i class="bi bi-envelope me-1"></i>{{ mentorship.mentee_email }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== MENTORSHIP INFO AND PROGRESS ==================== #}
+    {# -- Information Card -- #}
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2"></i>Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Status</label>
+                            <p class="mb-0">
+                                <span class="badge bg-{{ 'warning text-dark' if mentorship.status=='requested' else 'info' if mentorship.status=='accepted' else 'success' if mentorship.status=='active' else 'secondary' if mentorship.status=='completed' else 'danger' }} fs-6">{{ mentorship.status|capitalize }}</span>
+                            </p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Topic / Focus Area</label>
+                            <p class="mb-0"><strong>{{ mentorship.topic or 'General Mentorship' }}</strong></p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Goals</label>
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ mentorship.goals or 'Not specified' }}</p>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small">Started</label>
+                            <p class="mb-0 small">{{ mentorship.created_at.strftime('%b %d, %Y') if mentorship.created_at else '-' }}</p>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small">Next Meeting</label>
+                            <p class="mb-0 small">
+                                {% if mentorship.next_meeting %}
+                                    {{ mentorship.next_meeting.strftime('%b %d, %Y %H:%M') }}
+                                {% else %}
+                                    <span class="text-muted">Not scheduled</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# -- Progress Stats Card -- #}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up me-2"></i>Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center g-3">
+                        <div class="col-6">
+                            <h3 class="fw-bold text-primary">{{ sessions|length }}</h3>
+                            <small class="text-muted">Sessions Completed</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="fw-bold text-success">
+                                {% if sessions %}
+                                    {% set ratings = sessions|selectattr('rating')|map(attribute='rating')|list %}
+                                    {% if ratings|length > 0 %}
+                                        {{ "%.1f"|format(ratings|sum / ratings|length) }}/5
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </h3>
+                            <small class="text-muted">Avg Rating</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="fw-bold text-info">
+                                {{ sessions|map(attribute='duration_minutes')|sum or 0 }}
+                            </h3>
+                            <small class="text-muted">Total Minutes</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="fw-bold text-warning">
+                                {{ "%.1f"|format((sessions|map(attribute='duration_minutes')|sum or 0) / 60) }}
+                            </h3>
+                            <small class="text-muted">Total Hours</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== SESSION HISTORY ==================== #}
+    {# -- Sessions Table -- #}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2"></i>Session History</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if sessions %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Duration</th>
+                                <th>Notes</th>
+                                <th>Rating</th>
+                                <th>Mentor Feedback</th>
+                                <th>Mentee Feedback</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in sessions %}
+                            <tr>
+                                <td>
+                                    <small>{{ s.session_date.strftime('%b %d, %Y %H:%M') if s.session_date else '-' }}</small>
+                                </td>
+                                <td>
+                                    <small>{{ s.duration_minutes or 0 }} min</small>
+                                </td>
+                                <td>
+                                    <small style="white-space: pre-wrap; max-width: 200px; display: block;">{{ s.notes[:100] if s.notes else '-' }}{% if s.notes and s.notes|length > 100 %}...{% endif %}</small>
+                                </td>
+                                <td>
+                                    {% if s.rating %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-star-fill"></i> {{ s.rating }}/5
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-success">
+                                        {{ s.feedback_from_mentor[:50] if s.feedback_from_mentor else '-' }}
+                                        {% if s.feedback_from_mentor and s.feedback_from_mentor|length > 50 %}...{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <small class="text-info">
+                                        {{ s.feedback_from_mentee[:50] if s.feedback_from_mentee else '-' }}
+                                        {% if s.feedback_from_mentee and s.feedback_from_mentee|length > 50 %}...{% endif %}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <p><i class="bi bi-calendar-x fs-3 d-block mb-2"></i>No sessions scheduled yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ==================== ADMIN ACTIONS ==================== #}
+    {# -- Accept/Reject/Complete buttons based on status -- #}
+    {% if mentorship.status == 'requested' %}
+    <div class="mt-4 d-flex gap-2 justify-content-end">
+        <button class="btn btn-success" onclick="mentorshipAction('accept')">
+            <i class="bi bi-check-lg me-1"></i>Accept
+        </button>
+        <button class="btn btn-danger" onclick="mentorshipAction('reject')">
+            <i class="bi bi-x-lg me-1"></i>Reject
+        </button>
+    </div>
+    {% elif mentorship.status == 'active' %}
+    <div class="mt-4 d-flex gap-2 justify-content-end">
+        <button class="btn btn-warning" onclick="mentorshipAction('complete')">
+            <i class="bi bi-check-circle me-1"></i>Complete
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+{# -- Mentorship action script -- #}
+<script>
+function mentorshipAction(action) {
+    customConfirm(`${action.charAt(0).toUpperCase() + action.slice(1)} this mentorship?`,function(confirmed){
+    if(!confirmed) return;
+    
+    fetch('/api/admin/mentorship-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mentorship_id: {{ mentorship.id }}, action: action })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            showToast(d.message || 'Action completed', 'success');
+            setTimeout(() => window.history.back(), 1500);
+        } else {
+            showToast(d.message || 'Action failed', 'danger');
+        }
+    })
+    .catch(e => showToast('Error: ' + e.message, 'danger'));
+    });
+}
+</script>
+{% endblock %}

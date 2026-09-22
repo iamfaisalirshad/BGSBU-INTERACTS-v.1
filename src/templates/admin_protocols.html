@@ -1,0 +1,378 @@
+{# =============================================================================
+   Protocols - Admin configuration panel for enabling/disabling and tuning
+   system protocols (messaging, connections, jobs, mentorship, applications).
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}Manage Protocols - Admin Panel{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h3 class="fw-bold mb-0"><i class="bi bi-sliders text-warning me-2"></i>System Protocols</h3>
+            <small class="text-muted">Enable or disable platform features and configure their behaviour in real time</small>
+        </div>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Back</a>
+    </div>
+
+    {# ==================== QUICK STATUS OVERVIEW ==================== #}
+    <div class="row g-3 mb-4">
+        {% for protocol in protocols %}
+        <div class="col-lg col-md-4 col-6">
+            <div class="card border-0 shadow-sm text-center py-3 px-2 h-100" id="statusCard-{{ protocol.protocol_type }}">
+                <i class="bi bi-{% if protocol.protocol_type == 'messaging' %}chat-dots{% elif protocol.protocol_type == 'connections' %}people{% elif protocol.protocol_type == 'jobs' %}briefcase{% elif protocol.protocol_type == 'mentorship' %}person-workspace{% else %}file-earmark-check{% endif %} fs-3 mb-1 {{ 'text-success' if protocol.is_enabled else 'text-danger' }}"></i>
+                <div class="small fw-semibold">{{ protocol.protocol_type|capitalize }}</div>
+                <span class="badge bg-{{ 'success' if protocol.is_enabled else 'danger' }} mt-1" id="statusBadge-{{ protocol.protocol_type }}">{{ 'ON' if protocol.is_enabled else 'OFF' }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# ==================== PROTOCOL CARDS ==================== #}
+    <div class="row g-4">
+        {% for protocol in protocols %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100" id="card-{{ protocol.protocol_type }}">
+                {# -- Card Header with Toggle -- #}
+                <div class="card-header border-0 d-flex align-items-center justify-content-between py-3
+                    {{ 'bg-success bg-opacity-10' if protocol.is_enabled else 'bg-danger bg-opacity-10' }}"
+                    id="cardHeader-{{ protocol.protocol_type }}">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-{% if protocol.protocol_type == 'messaging' %}chat-dots-fill{% elif protocol.protocol_type == 'connections' %}people-fill{% elif protocol.protocol_type == 'jobs' %}briefcase-fill{% elif protocol.protocol_type == 'mentorship' %}person-workspace{% else %}file-earmark-check-fill{% endif %} fs-5
+                            {{ 'text-success' if protocol.is_enabled else 'text-danger' }}"></i>
+                        <h5 class="mb-0 fw-bold">{{ protocol.protocol_type|capitalize }} Protocol</h5>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted" id="statusText-{{ protocol.protocol_type }}">{{ 'Enabled' if protocol.is_enabled else 'Disabled' }}</small>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="toggle-{{ protocol.protocol_type }}"
+                                   style="width:2.5em;height:1.3em;cursor:pointer"
+                                   {% if protocol.is_enabled %}checked{% endif %}
+                                   onchange="toggleProtocol('{{ protocol.protocol_type }}', this.checked)">
+                        </div>
+                    </div>
+                </div>
+
+                {# -- Card Body: Protocol-specific settings -- #}
+                <div class="card-body">
+                    <form id="form-{{ protocol.protocol_type }}" class="protocol-form" data-protocol="{{ protocol.protocol_type }}">
+
+                    {% if protocol.protocol_type == 'messaging' %}
+                        {# MESSAGING SETTINGS #}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-bar-chart me-1 text-info"></i>Daily Message Limit</label>
+                                <input type="number" class="form-control" name="max_messages_per_day"
+                                       value="{{ protocol.max_messages_per_day or '' }}"
+                                       placeholder="Unlimited" min="1" max="10000">
+                                <small class="text-muted">Max messages a user can send per day. Leave empty for unlimited.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-calendar-check me-1 text-warning"></i>Message Retention (days)</label>
+                                <input type="number" class="form-control" name="message_retention_days"
+                                       value="{{ protocol.message_retention_days or 90 }}"
+                                       placeholder="90" min="1">
+                                <small class="text-muted">How long to keep messages before archiving.</small>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="reqConn-messaging" name="require_connection_for_messaging"
+                                           {% if protocol.require_connection_for_messaging %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold" for="reqConn-messaging">
+                                        <i class="bi bi-people me-1 text-primary"></i> Require Connection to Message
+                                    </label>
+                                    <div class="text-muted small">Users must be connected before they can send messages.</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="autoDel-messaging" name="auto_delete_messages"
+                                           {% if protocol.auto_delete_messages %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold" for="autoDel-messaging">
+                                        <i class="bi bi-trash me-1 text-danger"></i> Auto-Delete Old Messages
+                                    </label>
+                                    <div class="text-muted small">Automatically delete messages past the retention period.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif protocol.protocol_type == 'connections' %}
+                        {# CONNECTIONS SETTINGS #}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-person-plus me-1 text-info"></i>Daily Connection Request Limit</label>
+                                <input type="number" class="form-control" name="max_connections_per_day"
+                                       value="{{ protocol.max_connections_per_day or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">Max connection requests a user can send per day.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-people-fill me-1 text-success"></i>Max Total Connections</label>
+                                <input type="number" class="form-control" name="max_total_connections"
+                                       value="{{ protocol.max_total_connections or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">Maximum connections a single user can have.</small>
+                            </div>
+                            <div class="col-12">
+                                <div class="alert alert-info py-2 mb-0">
+                                    <small><i class="bi bi-info-circle me-1"></i>When disabled, users cannot send or accept new connection requests. Existing connections remain intact.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif protocol.protocol_type == 'jobs' %}
+                        {# JOBS SETTINGS #}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-briefcase me-1 text-success"></i>Max Active Job Posts per Alumni</label>
+                                <input type="number" class="form-control" name="max_jobs_per_alumni"
+                                       value="{{ protocol.max_jobs_per_alumni or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">How many active job posts an alumni can have at once.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-journal-check me-1 text-warning"></i>Max Applications per Student</label>
+                                <input type="number" class="form-control" name="max_applications_per_student"
+                                       value="{{ protocol.max_applications_per_student or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">Max number of job applications a student can submit.</small>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="reqApproval-jobs" name="require_admin_approval"
+                                           {% if protocol.require_admin_approval %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold" for="reqApproval-jobs">
+                                        <i class="bi bi-shield-check me-1 text-warning"></i> Require Admin Approval for Job Posts
+                                    </label>
+                                    <div class="text-muted small">New job posts must be reviewed and approved by admin before going live.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif protocol.protocol_type == 'mentorship' %}
+                        {# MENTORSHIP SETTINGS #}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-person-hearts me-1 text-primary"></i>Max Active Mentorships per Mentor</label>
+                                <input type="number" class="form-control" name="max_mentorships_per_mentor"
+                                       value="{{ protocol.max_mentorships_per_mentor or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">Max concurrent active mentorships a mentor can have.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-calendar-event me-1 text-info"></i>Max Sessions per Mentorship</label>
+                                <input type="number" class="form-control" name="max_sessions_per_mentorship"
+                                       value="{{ protocol.max_sessions_per_mentorship or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">Maximum mentorship sessions allowed per mentorship pair.</small>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="reqVerified-mentorship" name="require_verified_mentor"
+                                           {% if protocol.require_verified_mentor %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold" for="reqVerified-mentorship">
+                                        <i class="bi bi-patch-check me-1 text-success"></i> Require Verified Mentor Badge
+                                    </label>
+                                    <div class="text-muted small">Only admin-verified mentors can accept mentorship requests.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif protocol.protocol_type == 'applications' %}
+                        {# APPLICATIONS SETTINGS #}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-file-earmark-check me-1 text-success"></i>Max Applications per Job</label>
+                                <input type="number" class="form-control" name="max_applications_per_job"
+                                       value="{{ protocol.max_applications_per_job or '' }}"
+                                       placeholder="Unlimited" min="1">
+                                <small class="text-muted">Cap how many students can apply for a single job posting.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold"><i class="bi bi-clock-history me-1 text-warning"></i>Application Review Period (days)</label>
+                                <input type="number" class="form-control" name="application_review_days"
+                                       value="{{ protocol.application_review_days or '' }}"
+                                       placeholder="No limit" min="1">
+                                <small class="text-muted">Days after which unreviewed applications are auto-closed.</small>
+                            </div>
+                            <div class="col-12">
+                                <div class="alert alert-info py-2 mb-0">
+                                    <small><i class="bi bi-info-circle me-1"></i>When disabled, students cannot submit new applications. Alumni can still manage existing ones.</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    </form>
+                </div>
+
+                {# -- Card Footer: Save + Last Updated -- #}
+                <div class="card-footer bg-transparent border-top d-flex align-items-center justify-content-between">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveProtocol('{{ protocol.protocol_type }}')">
+                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                    <small class="text-muted">
+                        {% if protocol.updated_at %}
+                            Updated {{ protocol.updated_at.strftime('%d %b %Y, %H:%M') }}
+                        {% else %}
+                            Never updated
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {# -- Empty state if no protocols in DB -- #}
+        {% if not protocols %}
+        <div class="col-12 text-center py-5 text-muted">
+            <i class="bi bi-database-x fs-1 d-block mb-3"></i>
+            <h5>No protocols found in database</h5>
+            <p>Protocol records have not been initialized yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ==================== NOTES ==================== #}
+    <div class="alert alert-warning mt-4 mb-0">
+        <h6 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle me-2"></i>Important Notes</h6>
+        <ul class="mb-0 small">
+            <li>Disabling a protocol <strong>immediately</strong> prevents users from using that feature</li>
+            <li>Changes take effect for all new requests — active users may need to refresh their page</li>
+            <li>Existing data (messages, connections, applications) is never deleted when a protocol is disabled</li>
+            <li>Save button stores the limit values; the toggle switch instantly enables/disables</li>
+        </ul>
+    </div>
+</div>
+
+{# -- Protocol toggle and save scripts -- #}
+<script>
+// Toast notification utility
+function showToast(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 4000);
+}
+
+function toggleProtocol(protocolType, isEnabled) {
+    const toggle = document.getElementById('toggle-' + protocolType);
+    toggle.disabled = true;
+
+    fetch('/api/admin/update-protocol', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ protocol_type: protocolType, is_enabled: isEnabled ? 1 : 0 })
+    })
+    .then(r => r.json())
+    .then(d => {
+        toggle.disabled = false;
+        if (d.success) {
+            // Update header bg colour
+            const header = document.getElementById('cardHeader-' + protocolType);
+            header.className = header.className
+                .replace(/bg-(success|danger) bg-opacity-10/, '')
+                .trim() + ' ' + (isEnabled ? 'bg-success bg-opacity-10' : 'bg-danger bg-opacity-10');
+
+            // Update icon colour in header
+            const icon = header.querySelector('i');
+            if (icon) {
+                icon.className = icon.className.replace(/text-(success|danger)/, isEnabled ? 'text-success' : 'text-danger');
+            }
+
+            // Update status text
+            const statusText = document.getElementById('statusText-' + protocolType);
+            if (statusText) statusText.textContent = isEnabled ? 'Enabled' : 'Disabled';
+
+            // Update quick status card
+            const statusCard = document.getElementById('statusCard-' + protocolType);
+            if (statusCard) {
+                const cardIcon = statusCard.querySelector('i');
+                if (cardIcon) cardIcon.className = cardIcon.className.replace(/text-(success|danger)/, isEnabled ? 'text-success' : 'text-danger');
+                const badge = document.getElementById('statusBadge-' + protocolType);
+                if (badge) {
+                    badge.textContent = isEnabled ? 'ON' : 'OFF';
+                    badge.className = 'badge bg-' + (isEnabled ? 'success' : 'danger') + ' mt-1';
+                }
+            }
+
+            showToast((protocolType.charAt(0).toUpperCase() + protocolType.slice(1)) + ' protocol ' + (isEnabled ? 'enabled' : 'disabled'), 'success');
+        } else {
+            showToast(d.message || 'Error updating protocol', 'danger');
+            toggle.checked = !isEnabled;
+        }
+    })
+    .catch(() => {
+        toggle.disabled = false;
+        showToast('Network error — could not update protocol', 'danger');
+        toggle.checked = !isEnabled;
+    });
+}
+
+function saveProtocol(protocolType) {
+    const form = document.getElementById('form-' + protocolType);
+    const formData = new FormData(form);
+    const toggle = document.getElementById('toggle-' + protocolType);
+
+    // Build payload — include all possible fields; backend will handle what's relevant
+    const data = {
+        protocol_type: protocolType,
+        is_enabled: toggle && toggle.checked ? 1 : 0,
+    };
+
+    // Numeric fields
+    const numericFields = [
+        'max_messages_per_day', 'message_retention_days',
+        'max_connections_per_day', 'max_total_connections',
+        'max_jobs_per_alumni', 'max_applications_per_student',
+        'max_mentorships_per_mentor', 'max_sessions_per_mentorship',
+        'max_applications_per_job', 'application_review_days'
+    ];
+    numericFields.forEach(f => {
+        const val = formData.get(f);
+        data[f] = val && val.trim() !== '' ? parseInt(val) : null;
+    });
+
+    // Checkbox (boolean) fields
+    const boolFields = [
+        'require_connection_for_messaging', 'auto_delete_messages',
+        'require_admin_approval', 'require_verified_mentor'
+    ];
+    boolFields.forEach(f => {
+        data[f] = formData.get(f) ? 1 : 0;
+    });
+
+    const saveBtn = form.closest('.card').querySelector('button[onclick*="saveProtocol"]');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...'; }
+
+    fetch('/api/admin/update-protocol', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Changes'; }
+        if (d.success) {
+            showToast(d.message || 'Settings saved', 'success');
+        } else {
+            showToast(d.message || 'Error saving settings', 'danger');
+        }
+    })
+    .catch(() => {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Changes'; }
+        showToast('Network error — settings not saved', 'danger');
+    });
+}
+</script>
+{% endblock %}

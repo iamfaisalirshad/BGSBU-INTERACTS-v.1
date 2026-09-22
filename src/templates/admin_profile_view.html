@@ -1,0 +1,377 @@
+{# =============================================================================
+   Admin Profile View - Full user profile editor with basic info, student/
+   alumni fields, job history, skills, admin controls, and notes.
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}View/Edit User - Admin{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold"><i class="bi bi-person-lock text-primary me-2"></i>User Profile Management</h3>
+        <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary">Back to Users</a>
+    </div>
+
+    {# ==================== PROFILE FORM ==================== #}
+    <div class="row g-4">
+        {# -- Basic Information Card -- #}
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary bg-opacity-10 border-bottom border-primary">
+                    <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-person"></i> Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not user.profile_pic or user.profile_pic=='default.svg' else '/uploads/'+user.profile_pic }}" 
+                             alt="{{ user.name }}" class="rounded-circle shadow mb-3" width="100" height="100" style="object-fit:cover" id="profilePreview" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div>
+                            <label class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-camera me-1"></i>Change Photo
+                                <input type="file" name="profile_pic" accept="image/*" class="d-none" onchange="previewImage(this)" form="basicInfoForm">
+                            </label>
+                        </div>
+                    </div>
+                    <form id="basicInfoForm" method="POST" action="{{ url_for('admin.admin_edit_user_profile', user_id=user.id) }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Name</label>
+                            <input type="text" class="form-control" name="name" value="{{ user.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" name="email" value="{{ user.email }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Phone</label>
+                            <input type="text" class="form-control" name="phone" value="{{ user.phone or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Roll Number</label>
+                            <input type="text" class="form-control" name="roll_number" value="{{ user.roll_number or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Department</label>
+                            <select class="form-control" name="department">
+                                <option value="">Select Department</option>
+                                {% for school, depts in departments.items() %}
+                                    <optgroup label="{{ school }}">
+                                        {% for dept in depts %}
+                                        <option value="{{ dept }}" {% if user.department == dept %}selected{% endif %}>{{ dept }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Bio</label>
+                            <textarea class="form-control" name="bio" rows="2">{{ user.bio or '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Interests</label>
+                            <textarea class="form-control" name="interests" rows="2" form="basicInfoForm">{{ user.interests or '' }}</textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {# -- Student Fields Card -- #}
+        <div class="col-lg-4" id="studentFields" style="display: {% if user.role == 'student' %}block{% else %}none{% endif %}">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info bg-opacity-10 border-bottom border-info">
+                    <h5 class="mb-0 fw-bold text-info"><i class="bi bi-book"></i> Student Status</h5>
+                </div>
+                <div class="card-body">
+                    {% set amax_sem = degree_semesters.get(user.department, 8) %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Year of Study</label>
+                        <input type="hidden" name="student_year" id="admin_student_year_hidden" form="basicInfoForm" value="{{ user.student_year or '' }}">
+                        <select class="form-control" id="admin_student_year_display" form="basicInfoForm"
+                                onchange="document.getElementById('admin_student_year_hidden').value=this.value"
+                                {% if user.student_year == 0 %}disabled{% endif %}>
+                            <option value="">Select Year</option>
+                            {% for i in range(1, amax_sem + 1) %}
+                            <option value="{{ i }}" class="sem-option" {% if user.student_year == i %}selected{% endif %}>Semester {{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Joining Year</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-control" name="joining_year" form="basicInfoForm"
+                               value="{{ user.joining_year or '' }}" placeholder="e.g., 2022">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Batch/Passing Year</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-control" name="batch_year" form="basicInfoForm" 
+                               value="{{ user.batch_year or '' }}" placeholder="e.g., 2026">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" name="currently_studying" 
+                                   form="basicInfoForm" id="currentlyStudying" 
+                                   {% if user.currently_studying %}checked{% endif %}>
+                            <label class="form-check-label" for="currentlyStudying">Currently Studying</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" name="degree_completed" value="1"
+                                   id="adminDegreeCompletedSwitch" form="basicInfoForm"
+                                   onchange="toggleAdminDegreeCompleted(this.checked)"
+                                   {% if user.student_year == 0 %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold text-info" for="adminDegreeCompletedSwitch">Degree Completed</label>
+                        </div>
+                        <small id="adminDegreeCompletedNote" class="text-info {{ '' if user.student_year == 0 else 'd-none' }}">
+                            <i class="bi bi-info-circle me-1"></i>Degree Completed status will be sent to admin for approval.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# -- Alumni Fields Card -- #}
+        <div class="col-lg-4" id="alumniFields" style="display: {% if user.role == 'alumni' %}block{% else %}none{% endif %}">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success bg-opacity-10 border-bottom border-success">
+                    <h5 class="mb-0 fw-bold text-success"><i class="bi bi-briefcase"></i> Current Job</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Job Title</label>
+                        <input type="text" class="form-control" name="current_job_title" form="basicInfoForm" 
+                               value="{{ user.current_job_title or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Company</label>
+                        <input type="text" class="form-control" name="current_company" form="basicInfoForm" 
+                               value="{{ user.company or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Role/Position</label>
+                        <input type="text" class="form-control" name="job_position" form="basicInfoForm" 
+                               value="{{ user.current_job_title or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Start Date</label>
+                        <input type="date" class="form-control" name="job_start_date" form="basicInfoForm" 
+                               value="{{ user.job_start_date or '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== WORK EXPERIENCES (alumni) ==================== #}
+    <div class="card border-0 shadow-sm mt-4" id="workExperiencesCard" style="display: {% if user.role == 'alumni' %}block{% else %}none{% endif %}">
+        <div class="card-header bg-warning bg-opacity-10 border-bottom border-warning">
+            <h5 class="mb-0 fw-bold text-warning"><i class="bi bi-hourglass-split"></i> Work Experiences</h5>
+        </div>
+        <div class="card-body">
+            <div id="adminWorkExperiencesContainer">
+            {% for w in user.work_experiences %}
+                <div class="work-entry card bg-dark border-secondary mb-2 p-3"><div class="row g-2">
+                    <div class="col-md-4"><input type="text" name="job_title_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Job Title" value="{{ w.job_title or '' }}" form="basicInfoForm"></div>
+                    <div class="col-md-3"><input type="text" name="company_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Company" value="{{ w.company or '' }}" form="basicInfoForm"></div>
+                    <div class="col-md-3"><input type="text" name="role_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Role" value="{{ w.role or '' }}" form="basicInfoForm"></div>
+                    <div class="col-md-2 d-flex align-items-center gap-2">
+                        <label class="text-muted small"><input type="checkbox" name="is_current_{{ loop.index0 }}" value="1" form="basicInfoForm" onchange="adminToggleEndDate(this, {{ loop.index0 }})" {{ 'checked' if w.is_current }}> Current</label>
+                        <button type="button" class="btn btn-outline-danger btn-sm ms-auto" onclick="adminRemoveWorkEntry(this)"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <div class="col-md-4"><label class="text-muted small d-block">Start Date</label><input type="date" name="start_date_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" value="{{ w.start_date or '' }}" form="basicInfoForm"></div>
+                    <div class="col-md-4"><label class="text-muted small d-block">End Date</label><input type="date" name="end_date_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" value="{{ w.end_date or '' }}" form="basicInfoForm" {{ 'disabled' if w.is_current }}></div>
+                </div></div>
+            {% endfor %}
+            </div>
+            <div class="d-flex gap-2 mb-2"><button type="button" class="btn btn-outline-primary btn-sm" onclick="adminAddWorkEntry()"><i class="bi bi-plus-lg"></i> Add another job</button></div>
+            <template id="adminWorkEntryTemplate"><div class="work-entry card bg-dark border-secondary mb-2 p-3"><div class="row g-2">
+                <div class="col-md-4"><input type="text" name="job_title_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Job Title" form="basicInfoForm"></div>
+                <div class="col-md-3"><input type="text" name="company_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Company" form="basicInfoForm"></div>
+                <div class="col-md-3"><input type="text" name="role_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Role" form="basicInfoForm"></div>
+                <div class="col-md-2 d-flex align-items-center gap-2">
+                    <label class="text-muted small"><input type="checkbox" name="is_current_IDX" value="1" form="basicInfoForm" onchange="adminToggleEndDate(this, 'IDX')"> Current</label>
+                    <button type="button" class="btn btn-outline-danger btn-sm ms-auto" onclick="adminRemoveWorkEntry(this)"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="col-md-4"><label class="text-muted small d-block">Start Date</label><input type="date" name="start_date_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" form="basicInfoForm"></div>
+                <div class="col-md-4"><label class="text-muted small d-block">End Date</label><input type="date" name="end_date_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" form="basicInfoForm"></div>
+            </div></div></template>
+        </div>
+    </div>
+
+    {# ==================== SKILLS ==================== #}
+    {# -- Skills Card -- #}
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-info bg-opacity-10 border-bottom border-info">
+            <h5 class="mb-0 fw-bold text-info"><i class="bi bi-gear"></i> Skills</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <textarea class="form-control" name="skills" form="basicInfoForm" rows="3">{{ user.skills or '' }}</textarea>
+                <small class="text-muted">Comma-separated skills (e.g., Python, Java, Machine Learning)</small>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== ADMIN CONTROLS ==================== #}
+    {# -- Admin Controls Card -- #}
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-secondary bg-opacity-10 border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-shield-lock"></i> Admin Controls</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" form="basicInfoForm"
+                               id="isActive" value="1" {% if user.is_active %}checked{% endif %}>
+                        <input type="hidden" name="is_active" value="0" form="basicInfoForm">
+                        <label class="form-check-label fw-bold" for="isActive">Account Active</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_approved" form="basicInfoForm"
+                               id="isApproved" value="1" {% if user.is_approved %}checked{% endif %}>
+                        <input type="hidden" name="is_approved" value="0" form="basicInfoForm">
+                        <label class="form-check-label fw-bold" for="isApproved">Account Approved</label>
+                    </div>
+                </div>
+                {% if user.role != 'student' %}
+                <div class="col-md-4">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_mentor" form="basicInfoForm"
+                               id="isMentor" value="1" {% if user.is_mentor %}checked{% endif %}>
+                        <input type="hidden" name="is_mentor" value="0" form="basicInfoForm">
+                        <label class="form-check-label fw-bold" for="isMentor">Mentor Status</label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ==================== ADMIN NOTES ==================== #}
+    {# -- Admin Notes Card -- #}
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-secondary bg-opacity-10 border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-pencil-square"></i> Admin Notes</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <textarea class="form-control" name="admin_notes" form="basicInfoForm" rows="3">{{ user.admin_notes or '' }}</textarea>
+                <small class="text-muted">Internal notes for admin use only</small>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== SAVE / CANCEL ==================== #}
+    {# -- Save Button -- #}
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" form="basicInfoForm" class="btn btn-primary btn-lg">
+            <i class="bi bi-save me-2"></i>Save Changes
+        </button>
+        <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary btn-lg">Cancel</a>
+    </div>
+</div>
+
+{# -- Profile editing scripts: role toggle, image preview, form submit -- #}
+<script>
+const degreeSemesters = {{ degree_semesters | tojson }};
+
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profilePreview').src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function updateAdminSemesterOptions() {
+    const dept = document.querySelector('select[name="department"]').value;
+    const display = document.getElementById('admin_student_year_display');
+    const hidden = document.getElementById('admin_student_year_hidden');
+    if (!display) return;
+    const currentVal = hidden.value;
+    const maxSem = degreeSemesters[dept] || 8;
+    display.querySelectorAll('.sem-option').forEach(o => o.remove());
+    for (let i = 1; i <= maxSem; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = 'Semester ' + i;
+        opt.className = 'sem-option';
+        display.appendChild(opt);
+    }
+    if (currentVal > 0 && currentVal <= maxSem) { display.value = currentVal; hidden.value = currentVal; }
+    else { display.value = ''; hidden.value = ''; }
+}
+
+function toggleAdminDegreeCompleted(checked) {
+    const display = document.getElementById('admin_student_year_display');
+    const hidden = document.getElementById('admin_student_year_hidden');
+    const csCheck = document.getElementById('currentlyStudying');
+    const note = document.getElementById('adminDegreeCompletedNote');
+    if (checked) {
+        display.disabled = true;
+        display.value = '';
+        hidden.value = '0';
+        note.classList.remove('d-none');
+        if (csCheck) csCheck.checked = false;
+    } else {
+        display.disabled = false;
+        hidden.value = '';
+        note.classList.add('d-none');
+    }
+}
+
+document.getElementById('currentlyStudying')?.addEventListener('change', function() {
+    const dcSwitch = document.getElementById('adminDegreeCompletedSwitch');
+    if (this.checked && dcSwitch && dcSwitch.checked) {
+        dcSwitch.checked = false;
+        toggleAdminDegreeCompleted(false);
+    }
+});
+
+document.querySelector('select[name="department"]').addEventListener('change', function() {
+    const dcSwitch = document.getElementById('adminDegreeCompletedSwitch');
+    if (dcSwitch && !dcSwitch.checked) {
+        updateAdminSemesterOptions();
+    }
+});
+if (document.getElementById('adminDegreeCompletedSwitch') && !document.getElementById('adminDegreeCompletedSwitch').checked) {
+    updateAdminSemesterOptions();
+}
+
+function adminAddWorkEntry() {
+    const tmpl = document.getElementById('adminWorkEntryTemplate');
+    const container = document.getElementById('adminWorkExperiencesContainer');
+    const idx = container.children.length;
+    const html = tmpl.innerHTML.replace(/IDX/g, idx);
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    container.appendChild(div.firstElementChild);
+}
+function adminRemoveWorkEntry(btn) {
+    btn.closest('.work-entry').remove();
+}
+function adminToggleEndDate(cb, idx) {
+    const entry = cb.closest('.work-entry');
+    const endDate = entry.querySelector('input[name="end_date_'+idx+'"]');
+    if (endDate) endDate.disabled = cb.checked;
+}
+document.getElementById('basicInfoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch(this.action, {
+        method: 'POST',
+        headers: {'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')},
+        body: formData
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast('Profile updated successfully!', 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast(d.message || 'Error updating profile', 'danger');
+        }
+    });
+});
+</script>
+{% endblock %}

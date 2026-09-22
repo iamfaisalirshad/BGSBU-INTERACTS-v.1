@@ -1,0 +1,75 @@
+{# ============================================================ #}
+{# Template: dashboard_alumni_view.html                           #}
+{# Description: Lists all registered alumni with search,          #}
+{#   pagination, and profile links. Sub-view from dashboard.      #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Alumni - Dashboard{% endblock %}
+{% block content %}
+{# ==================== HEADER ==================== #}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-mortarboard text-success me-2"></i>All Alumni</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> registered alumni</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    {# ==================== SEARCH FORM ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-9">
+                    <input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search by name, email, or company..." value="{{ search }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# ==================== ALUMNI LIST ==================== #}
+    {% if alumni %}
+    <div class="row g-3 mb-4">
+        {% for alumni_member in alumni %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not alumni_member.profile_pic else '/uploads/'+alumni_member.profile_pic }}" 
+                             class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" 
+                             onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div class="flex-grow-1">
+                            <h6 class="fw-semibold mb-0">
+                                <a href="{{ url_for('profile.view_profile', user_id=alumni_member.id) }}" class="text-decoration-none text-white">
+                                    {{ alumni_member.name }}
+                                </a>
+                            </h6>
+                            <small class="text-muted d-block">{{ alumni_member.email }}</small>
+                            {% if alumni_member.department %}<small class="text-muted d-block"><i class="bi bi-building me-1"></i>{{ alumni_member.department }}</small>{% endif %}
+                            {% if alumni_member.roll_number %}<small class="text-muted d-block"><i class="bi bi-person-badge me-1"></i>Roll: {{ alumni_member.roll_number }}</small>{% endif %}
+                            {% if alumni_member.joining_year and alumni_member.passing_year %}<small class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Batch {{ alumni_member.joining_year }}–{{ alumni_member.passing_year }}</small>{% endif %}
+                            {% if alumni_member.company %}<small class="text-info d-block"><i class="bi bi-briefcase me-1"></i>{{ alumni_member.company }}</small>{% endif %}
+                            {% if alumni_member.current_job_title %}<small class="text-muted d-block"><i class="bi bi-person-workspace me-1"></i>{{ alumni_member.current_job_title }}</small>{% endif %}
+                            <a href="{{ url_for('profile.view_profile', user_id=alumni_member.id) }}" class="btn btn-sm btn-primary mt-2">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# -- empty state -- #}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-search display-4 d-block mb-3"></i>
+            <p>No alumni found matching your search.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

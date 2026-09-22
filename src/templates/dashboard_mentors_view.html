@@ -1,0 +1,95 @@
+{# ============================================================ #}
+{# Template: dashboard_mentors_view.html                          #}
+{# Description: Lists available mentors with search, pagination,  #}
+{#   and a request-mentorship button. Sub-view from dashboard.    #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Mentors - Dashboard{% endblock %}
+{% block content %}
+{# ==================== HEADER ==================== #}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-person-workspace text-warning me-2"></i>Available Mentors</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> available mentors</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    {# ==================== SEARCH FORM ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-9">
+                    <input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search by name or bio..." value="{{ search }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# ==================== MENTOR LIST ==================== #}
+    {% if mentors %}
+    <div class="row g-3 mb-4">
+        {% for mentor in mentors %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not mentor.profile_pic else '/uploads/'+mentor.profile_pic }}" 
+                             class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" 
+                             onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div class="flex-grow-1">
+                            <h6 class="fw-semibold mb-0">
+                                <a href="{{ url_for('profile.view_profile', user_id=mentor.id) }}" class="text-decoration-none text-white">
+                                    {{ mentor.name }} <span class="badge bg-warning text-dark">Mentor</span>
+                                </a>
+                            </h6>
+                            <small class="text-muted d-block">{{ mentor.email }}</small>
+                            {% if mentor.department %}<small class="text-muted d-block"><i class="bi bi-building me-1"></i>{{ mentor.department }}</small>{% endif %}
+                            {% if mentor.roll_number %}<small class="text-muted d-block"><i class="bi bi-person-badge me-1"></i>Roll: {{ mentor.roll_number }}</small>{% endif %}
+                            {% if mentor.joining_year and mentor.passing_year %}<small class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Batch {{ mentor.joining_year }}–{{ mentor.passing_year }}</small>{% endif %}
+                            {% if mentor.company %}<small class="text-info d-block"><i class="bi bi-briefcase me-1"></i>{{ mentor.company }}</small>{% endif %}
+                            {% if mentor.bio %}<p class="small mt-2 text-muted">{{ mentor.bio[:100] }}...</p>{% endif %}
+                            <a href="{{ url_for('profile.view_profile', user_id=mentor.id) }}" class="btn btn-sm btn-primary mt-2">View Profile</a>
+                            <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="requestMentorship({{ mentor.id }}, this)"><i class="bi bi-person-plus me-1"></i>Request</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# -- empty state -- #}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-person-workspace display-4 d-block mb-3"></i>
+            <p>No mentors found matching your search.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{# ==================== JAVASCRIPT ==================== #}
+<script>
+function requestMentorship(mentorId, btn){
+    fetch('/api/request-mentorship', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mentor_id: mentorId})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            btn.innerHTML = '<i class="bi bi-check me-1"></i>Requested';
+            btn.disabled = true;
+            btn.className = 'btn btn-sm btn-success mt-2';
+            showToast('Mentorship request sent', 'success');
+        } else {
+            showToast(d.message || 'Error sending request', 'danger');
+        }
+    });
+}
+</script>
+{% endblock %}

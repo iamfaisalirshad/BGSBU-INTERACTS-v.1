@@ -1,0 +1,111 @@
+{# ============================================================ #}
+{# Template: dashboard_connections_view.html                      #}
+{# Description: Lists the current user's active connections with  #}
+{#   profile links, remove option, and pagination.                #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}My Connections - Dashboard{% endblock %}
+{% block content %}
+{# ==================== HEADER ==================== #}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-people text-primary me-2"></i>My Connections</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> active connections</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    {# ==================== CONNECTIONS LIST ==================== #}
+    {% if connections %}
+    <div class="row g-3 mb-4">
+        {% for conn in connections %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not conn.profile_pic else '/uploads/'+conn.profile_pic }}" 
+                             class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" 
+                             onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div class="flex-grow-1">
+                            <h6 class="fw-semibold mb-0">
+                                <a href="{{ url_for('profile.view_profile', user_id=conn.user_id) }}" class="text-decoration-none text-white">
+                                    {{ conn.name }}
+                                </a>
+                            </h6>
+                            <small class="text-muted d-block">{{ conn.email }}</small>
+                            {% if conn.department %}<small class="text-muted d-block">{{ conn.department }}</small>{% endif %}
+                            {% if conn.roll_number %}<small class="text-muted d-block"><i class="bi bi-person-badge me-1"></i>Roll: {{ conn.roll_number }}</small>{% endif %}
+                            <small class="text-muted d-block mt-1"><i class="bi bi-calendar me-1"></i>Connected {{ conn.created_at.strftime('%b %d, %Y') if conn.created_at else 'Recently' }}</small>
+                            <a href="{{ url_for('profile.view_profile', user_id=conn.user_id) }}" class="btn btn-sm btn-primary mt-2">View Profile</a>
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="removeConnection({{ conn.connected_user_id }}, this)"><i class="bi bi-trash me-1"></i>Remove</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# -- pagination -- #}
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_connections_view', page=1) }}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_connections_view', page=page-1) }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_connections_view', page=p) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_connections_view', page=page+1) }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_connections_view', page=total_pages) }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {# -- empty state -- #}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-3"></i>
+            <p>You don't have any connections yet. Find people to connect with!</p>
+            <a href="{{ url_for('directory.alumni_directory') }}" class="btn btn-primary">Browse Directory</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{# ==================== JAVASCRIPT ==================== #}
+<script>
+function filterConnections(btn){document.querySelectorAll(".filter-conn-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");var f=btn.dataset.filter;document.querySelectorAll(".conn-item").forEach(function(i){i.style.display=(f==="all"||i.dataset.role===f)?"":"none";});}
+function removeConnection(userId, btn){
+    customConfirm('Remove this connection?',function(confirmed){
+    if(!confirmed) return;
+    fetch('/api/remove-connection', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({receiver_id: userId})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            btn.closest('.col-lg-4').remove();
+            showToast('Connection removed', 'success');
+        }
+    });
+    });
+}
+</script>
+{% endblock %}

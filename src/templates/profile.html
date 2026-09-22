@@ -1,0 +1,101 @@
+{# ============================================================ #}
+{# Template: profile.html                                         #}
+{# Description: User profile page with cover photo, avatar,       #}
+{#   bio, details, skills, job history, and connections sidebar.  #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}{{ user.name }} - Profile{% endblock %}
+{% block content %}
+{# ==================== PROFILE HEADER ==================== #}
+<div class="py-4">
+    <div class="card border-0 shadow-lg mb-4 overflow-hidden">
+        <div style="height:150px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)"></div>
+        <div class="card-body position-relative" style="margin-top:-60px">
+            <div class="row align-items-end">
+                <div class="col-md-auto text-center text-md-start mb-3 mb-md-0">
+                    <img src="{{ url_for('static', filename='images/default.svg') if not user.profile_pic or user.profile_pic=='default.svg' else '/uploads/'+user.profile_pic }}" class="rounded-circle border border-4 border-dark shadow" width="120" height="120" style="object-fit:cover;margin-top:-30px" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                </div>
+                <div class="col-md"><h3 class="fw-bold mb-1">{{ user.name }}</h3><p class="text-muted mb-2"><span class="badge bg-{{ 'info' if user.role=='student' else 'success' if user.role=='alumni' else 'warning' }} me-2">{{ user.role|capitalize }}</span>{% if user.is_mentor %}<span class="badge bg-warning text-dark me-2"><i class="bi bi-star-fill me-1"></i>Mentor</span>{% endif %}<span><i class="bi bi-geo-alt me-1"></i>{{ user.department or 'N/A' }}</span>{% if user.joining_year and user.passing_year %}<span class="ms-2"><i class="bi bi-calendar me-1"></i>Batch {{ user.joining_year }}–{{ user.passing_year }}</span>{% endif %}</p></div>
+                <div class="col-md-auto">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        {% if session.get('role') == 'admin' %}
+                            <a href="{{ url_for('admin.admin_view_profile', user_id=user.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Edit Profile</a>
+                        {% endif %}
+                        {% if not is_own_profile and session.get('role') != 'admin' %}
+                            {# -- Connect section -- #}
+                            {% if connection_status=='accepted' %}
+                                <span class="badge bg-success py-2 px-3"><i class="bi bi-check-circle me-1"></i>Connected</span>
+                                <button class="btn btn-outline-danger btn-sm" onclick="removeConn({{ user.id }})"><i class="bi bi-person-x me-1"></i>Remove</button>
+                            {% elif connection_status=='pending' %}
+                                <span class="badge bg-warning text-dark py-2 px-3"><i class="bi bi-clock me-1"></i>Pending</span>
+                            {% elif connection_status=='received' %}
+                                <button class="btn btn-success" onclick="acceptConnReq({{ user.id }})"><i class="bi bi-check-lg me-1"></i>Accept</button>
+                                <button class="btn btn-outline-danger" onclick="rejectConnReq({{ user.id }})"><i class="bi bi-x-lg me-1"></i>Decline</button>
+                                <span class="badge bg-info py-2 px-3">Wants to Connect</span>
+                            {% else %}
+                                <button class="btn btn-primary" id="connectBtn" onclick="sendReq({{ user.id }})"><i class="bi bi-person-plus me-1"></i>Connect</button>
+                            {% endif %}
+
+                            {# -- Message section (independent) -- #}
+                            {% if connection_status=='accepted' or msg_req_status=='accepted' %}
+                                <a href="{{ url_for('chat.chat_page') }}?user={{ user.id }}" class="btn btn-success"><i class="bi bi-chat-dots me-1"></i>Message</a>
+                            {% endif %}
+                            {% if msg_req_status=='pending' %}
+                                <span class="badge bg-warning text-dark py-2 px-3"><i class="bi bi-clock me-1"></i>Msg Request Sent</span>
+                            {% elif msg_req_status=='received_request' %}
+                                <button class="btn btn-success" onclick="acceptMsgReq({{ user.id }})"><i class="bi bi-check-lg me-1"></i>Accept Request</button>
+                                <button class="btn btn-outline-danger" onclick="rejectMsgReq({{ user.id }})"><i class="bi bi-x-lg me-1"></i>Decline</button>
+                                <span class="badge bg-info py-2 px-3">Wants to Chat</span>
+                            {% elif connection_status!='accepted' and msg_req_status is none %}
+                                <button class="btn btn-outline-info" id="msgReqBtn" onclick="sendMsgReq({{ user.id }})"><i class="bi bi-chat-dots me-1"></i>Send Message Request</button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {# ==================== MAIN CONTENT ==================== #}
+    <div class="row g-4">
+        {# -- about & details -- #}
+        <div class="col-lg-8">
+            {% if user.bio %}<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-person-vcard text-primary me-2"></i>About</h5><p>{{ user.bio }}</p></div></div>{% endif %}
+            <div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Details</h5>
+                <div class="row g-3">
+                    <div class="col-md-6"><i class="bi bi-envelope text-muted me-2"></i><small class="text-muted">Email:</small> {{ user.email }}</div>
+                    {% if user.phone %}<div class="col-md-6"><i class="bi bi-phone text-muted me-2"></i><small class="text-muted">Phone:</small> {{ user.phone }}</div>{% endif %}
+                    {% if user.roll_number %}<div class="col-md-6"><i class="bi bi-person-badge text-muted me-2"></i><small class="text-muted">Roll No:</small> <strong>{{ user.roll_number }}</strong></div>{% endif %}
+                    <div class="col-md-6"><i class="bi bi-book text-muted me-2"></i><small class="text-muted">Dept:</small> {{ user.department or 'N/A' }}</div>
+                    {% if user.joining_year %}<div class="col-md-6"><i class="bi bi-calendar-plus text-muted me-2"></i><small class="text-muted">Joining Year:</small> {{ user.joining_year }}</div>{% endif %}
+                    {% if user.passing_year %}<div class="col-md-6"><i class="bi bi-calendar-check text-muted me-2"></i><small class="text-muted">Passing Year:</small> {{ user.passing_year }}</div>{% endif %}
+                    {% if user.role == 'alumni' %}<div class="col-md-6"><i class="bi bi-mortarboard text-muted me-2"></i><small class="text-muted">Status:</small> Degree Completed</div>{% elif user.student_year == 0 %}<div class="col-md-6"><i class="bi bi-mortarboard text-muted me-2"></i><small class="text-muted">Status:</small> Degree Completed</div>{% elif user.student_year %}<div class="col-md-6"><i class="bi bi-mortarboard text-muted me-2"></i><small class="text-muted">Semester:</small> Semester {{ user.student_year }}</div>{% endif %}
+                    {% if user.company and user.role != 'student' %}<div class="col-md-6"><i class="bi bi-building text-muted me-2"></i><small class="text-muted">Company:</small> {{ user.company }}</div>{% endif %}
+                </div>
+            </div></div>
+            {% if user.skills %}<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-tools text-primary me-2"></i>Skills</h5><div class="d-flex flex-wrap gap-2">{% for skill in user.skills.split(',') %}<span class="badge bg-primary bg-opacity-25 text-primary border border-primary px-3 py-2">{{ skill.strip() }}</span>{% endfor %}</div></div></div>{% endif %}
+            {% if user.interests %}<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-heart text-primary me-2"></i>Interests</h5><p>{{ user.interests }}</p></div></div>{% endif %}
+            {% if user.role == 'student' %}
+                {% if user.internships %}<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-briefcase text-primary me-2"></i>Internships</h5><p style="white-space:pre-line">{{ user.internships }}</p></div></div>{% endif %}
+                {% if user.projects %}<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-code-square text-primary me-2"></i>Projects</h5><p style="white-space:pre-line">{{ user.projects }}</p></div></div>{% endif %}
+            {% endif %}
+            {% if user.work_experiences and user.role != 'student' %}<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-briefcase text-primary me-2"></i>Work Experience</h5>{% for w in user.work_experiences %}<div class="d-flex align-items-start gap-3 mb-3 p-3 bg-dark rounded border-start border-primary border-3"><div class="fs-3 text-primary"><i class="bi bi-briefcase-fill"></i></div><div><h6 class="mb-1 fw-bold">{{ w.job_title }}</h6><p class="mb-1 text-muted small">{{ w.company }}{% if w.role %} &middot; {{ w.role }}{% endif %}</p><p class="mb-0 small text-muted">{{ w.start_date or '' }} - {% if w.is_current %}Present{% else %}{{ w.end_date or '' }}{% endif %}</p></div></div>{% endfor %}</div></div>{% endif %}
+        </div>
+        {# -- connections sidebar -- #}
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4"><div class="card-body"><h5 class="fw-bold mb-3"><i class="bi bi-people text-primary me-2"></i>Connections</h5>
+            {% if connections %}<div class="row g-2">{% for c in connections %}<div class="col-4 text-center"><a href="{{ url_for('profile.view_profile', user_id=c.id) }}" class="text-decoration-none"><img src="{{ url_for('static', filename='images/default.svg') if not c.profile_pic or c.profile_pic=='default.svg' else '/uploads/'+c.profile_pic }}" class="rounded-circle mb-1" width="50" height="50" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'"><small class="d-block text-white text-truncate">{{ c.name.split()[0] }}</small></a></div>{% endfor %}</div>{% else %}<p class="text-muted text-center">No connections yet</p>{% endif %}
+            </div></div>
+        </div>
+    </div>
+</div>
+{# ==================== JAVASCRIPT ==================== #}
+<script>
+function sendReq(id){fetch('/api/send-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver_id:id})}).then(r=>r.json()).then(d=>{if(d.success){let b=document.getElementById('connectBtn');b.innerHTML='<i class="bi bi-clock me-1"></i>Sent';b.className='btn btn-warning';b.disabled=true;showToast('Request sent!','success');}else{showToast(d.message,'warning');}});}
+function sendMsgReq(id){fetch('/api/message-request/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver_id:id,message:''})}).then(r=>r.json()).then(d=>{if(d.success){let b=document.getElementById('msgReqBtn');b.innerHTML='<i class="bi bi-clock me-1"></i>Sent';b.className='btn btn-warning';b.disabled=true;showToast('Request sent!','success');}else{showToast(d.message,'warning');}});}
+function acceptMsgReq(id){fetch('/api/message-request/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_id:id})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Request accepted!','success');setTimeout(function(){location.reload();},1500);}else{showToast(d.message,'warning');}});}
+function rejectMsgReq(id){fetch('/api/message-request/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_id:id})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Request declined','info');setTimeout(function(){location.reload();},1500);}else{showToast(d.message,'warning');}});}
+function acceptConnReq(id){fetch('/api/accept-connection-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_id:id})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Connection accepted!','success');setTimeout(function(){location.reload();},1500);}else{showToast(d.message,'warning');}});}
+function rejectConnReq(id){fetch('/api/reject-connection-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_id:id})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Connection declined','info');setTimeout(function(){location.reload();},1500);}else{showToast(d.message,'warning');}});}
+function removeConn(id){customConfirm('Remove this connection?',function(confirmed){if(!confirmed)return;fetch('/api/remove-connection-with-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:id})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Connection removed','info');setTimeout(function(){location.reload();},1500);}else{showToast(d.message,'warning');}});});}
+</script>
+{% endblock %}

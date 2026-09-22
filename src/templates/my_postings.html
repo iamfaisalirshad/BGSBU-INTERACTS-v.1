@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My Postings{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4"><h3 class="fw-bold mb-0">My Job Postings</h3><a href="{{ url_for('jobs.post_job') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Post New</a></div>
+    
+    <div class="row mb-4 g-3">
+        <div class="col-lg-3 col-md-6"><div class="card border-0 shadow-sm bg-primary bg-opacity-10"><div class="card-body"><h3 class="fw-bold text-primary">{{ total_applications }}</h3><small class="text-muted">Total Applications</small></div></div></div>
+        <div class="col-lg-3 col-md-6"><div class="card border-0 shadow-sm bg-warning bg-opacity-10"><div class="card-body"><h3 class="fw-bold text-warning">{{ pending_applications }}</h3><small class="text-muted">Pending Review</small></div></div></div>
+        <div class="col-lg-3 col-md-6"><div class="card border-0 shadow-sm bg-success bg-opacity-10"><div class="card-body"><h3 class="fw-bold text-success">{{ active_jobs }}</h3><small class="text-muted">Active Postings</small></div></div></div>
+        <div class="col-lg-3 col-md-6"><div class="card border-0 shadow-sm bg-info bg-opacity-10"><div class="card-body"><h3 class="fw-bold text-info">{{ approved_jobs }}</h3><small class="text-muted">Approved Posts</small></div></div></div>
+    </div>
+    
+    {% if jobs %}<div class="row g-3">{% for j in jobs %}<div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+        <div class="d-flex justify-content-between"><h5 class="fw-bold">{{ j.title }}</h5><span class="badge bg-{{ 'success' if j.is_active and j.is_approved else 'warning' if j.is_active and not j.is_approved else 'secondary' }}">{{ 'Active' if j.is_active and j.is_approved else 'Pending Approval' if j.is_active and not j.is_approved else 'Inactive' }}</span></div>
+        <p class="text-muted">{{ j.company }} • {{ j.job_type|capitalize }}</p>
+        {% if not j.is_approved %}<div class="alert alert-warning mt-3">This job is pending admin approval and is not visible to students yet.</div>{% endif %}
+        <div class="d-flex justify-content-between align-items-center mt-3"><span class="badge bg-primary py-2 px-3">{{ j.application_count }} Applications</span><div><a href="{{ url_for('jobs.view_applications', job_id=j.id) }}" class="btn btn-sm btn-outline-primary me-1">View Apps</a><button type="button" class="btn btn-sm btn-outline-{{ 'danger' if j.is_active else 'success' }}" onclick="toggleJob({{ j.id }}, this)">{{ 'Deactivate' if j.is_active else 'Activate' }}</button></div></div>
+    </div></div></div>{% endfor %}</div>{% else %}<div class="text-center py-5 text-muted"><p>No postings yet</p></div>{% endif %}
+</div>
+<script>
+function toggleJob(jobId, btn){
+    fetch('/api/toggle-job',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jobId})})
+        .then(r=>r.json())
+        .then(d=>{if(d.success){showToast(d.is_active?'Job activated':'Job deactivated','success');setTimeout(()=>location.reload(),1000);}else{showToast('Error updating job','danger');}})
+        .catch(e=>{showToast('Error: '+e.message,'danger');});
+}
+</script>
+{% endblock %}

@@ -1,0 +1,4 @@
+
+.stat-icon{width:60px;height:60px;display:flex;align-items:center;justify-content:center;border-radius:12px!important}
+.stat-card .card-body{padding:1.25rem}.stat-card h3{font-size:1.8rem}
+.quick-action-card:hover i{transform:scale(1.2);transition:transform .3s}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0a0f2d" />
+      <stop offset="100%" stop-color="#1a2f57" />
+    </linearGradient>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e9f1ff" />
+      <stop offset="100%" stop-color="#7d9bff" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#sky)" />
+  <rect y="260" width="1200" height="540" fill="url(#bg)" opacity="0.88" />
+  <g opacity="0.95">
+    <rect x="100" y="360" width="220" height="160" rx="20" fill="#22386f" />
+    <rect x="380" y="320" width="260" height="200" rx="24" fill="#2d4a9f" />
+    <rect x="700" y="360" width="200" height="140" rx="18" fill="#253c82" />
+    <rect x="980" y="340" width="120" height="180" rx="16" fill="#2d4a9f" />
+    <rect x="180" y="420" width="860" height="100" rx="20" fill="#1a2f57" />
+  </g>
+  <path d="M0 600 C200 520 400 520 600 600 C800 680 1000 680 1200 600 L1200 800 L0 800 Z" fill="#162353" opacity="0.95" />
+  <text x="50%" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="76" fill="#ffffff" font-weight="700">BGSBU Campus</text>
+  <text x="50%" y="220" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#dfe8ff" letter-spacing="1">Baba Ghulam Shah Badshah University</text>
+</svg>

@@ -1,0 +1,311 @@
+{#
+  Mentorship Groups page for BGSBU Interacts
+  Tabbed interface: My Groups (mentor), Joined Groups, Available Groups
+  Includes create group modal and group join/request functionality
+#}
+{% extends "base.html" %}
+{% block title %}Mentorship Groups{% endblock %}
+{% block content %}
+<style>
+.group-card-inner { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.group-card-inner:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important; }
+.nav-tabs .nav-link { border: none; border-bottom: 2px solid transparent; color: #adb5bd !important; }
+.nav-tabs .nav-link:hover { border-bottom-color: #6c757d; color: #fff !important; }
+.nav-tabs .nav-link.active { border-bottom-color: var(--bs-primary); color: #fff !important; background: transparent; }
+</style>
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h3 class="fw-bold mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Mentorship Groups</h3>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('mentorship.mentorship_dashboard') }}" class="btn btn-outline-info btn-sm"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+            <a href="{{ url_for('mentorship.mentorship_page') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+            {% if session.get('role')=='alumni' %}
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal"><i class="bi bi-plus-lg me-1"></i>Create Group</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ==================== TAB NAVIGATION ==================== #}
+    <ul class="nav nav-tabs border-secondary mb-3">
+        {% if session.get('role')=='alumni' %}
+        <li class="nav-item"><a class="nav-link active text-white border-primary border-bottom-0" data-bs-toggle="pill" href="#myGroups"><i class="bi bi-star me-1"></i>My Groups <span class="badge bg-info ms-1">{{ my_groups|length }}</span></a></li>
+        {% endif %}
+        <li class="nav-item"><a class="nav-link {% if session.get('role')!='alumni' %}active text-white border-primary border-bottom-0{% else %}text-white{% endif %}" data-bs-toggle="pill" href="#joinedGroups"><i class="bi bi-check-circle me-1"></i>Joined <span class="badge bg-success ms-1">{{ joined_groups|length }}</span></a></li>
+        <li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#availableGroups"><i class="bi bi-plus-circle me-1"></i>Available <span class="badge bg-warning text-dark ms-1">{{ available_groups|length }}</span></a></li>
+    </ul>
+    {# -- Group Search -- #}
+    <div class="mb-3">
+        <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control bg-dark border-secondary text-white" id="groupSearch" placeholder="Search groups by name or domain..." oninput="filterGroups()" autocomplete="off">
+            <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('groupSearch').value='';filterGroups();"><i class="bi bi-x-lg"></i></button>
+        </div>
+    </div>
+
+    {# ==================== TAB CONTENT ==================== #}
+    <div class="tab-content">
+        {# ---- My Groups Tab (Alumni only) ---- #}
+        {% if session.get('role')=='alumni' %}
+        <div class="tab-pane fade show active" id="myGroups">
+            {% if my_groups %}
+            <div class="row g-3">
+                {% for g in my_groups %}
+                <div class="col-lg-4 col-md-6 group-card" data-name="{{ g.name|lower }}" data-domain="{{ (g.domain or '')|lower }}">
+                    <div class="card border-0 shadow-sm h-100 group-card-inner border-start border-primary border-3">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="fw-bold mb-0"><a href="{{ url_for('mentorship.group_detail', group_id=g.id) }}" class="text-decoration-none text-white">{{ g.name }}</a></h5>
+                            </div>
+                            {% if g.domain %}<span class="badge bg-info bg-opacity-25 text-info border border-info mb-2">{{ g.domain }}</span>{% endif %}
+                            <p class="text-muted small mb-2 flex-grow-1">{{ g.description or 'No description' }}</p>
+                            {# -- Member Progress Bar -- #}
+                            {% set max_mem = g.max_members or 50 %}
+                            {% set pct = (g.member_count / max_mem * 100)|round if max_mem > 0 else 0 %}
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted"><i class="bi bi-people me-1"></i>{{ g.member_count }}/{{ max_mem }} members</span>
+                                    <span class="text-muted">{{ pct }}%</span>
+                                </div>
+                                <div class="progress" style="height:5px">
+                                    <div class="progress-bar bg-{{ 'danger' if pct >= 90 else 'warning' if pct >= 70 else 'success' }}" role="progressbar" style="width:{{ pct }}%"></div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-1">
+                                <a href="{{ url_for('mentorship.group_detail', group_id=g.id) }}" class="btn btn-sm btn-outline-primary flex-fill"><i class="bi bi-box-arrow-in-right me-1"></i>Manage</a>
+                                <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteGroup({{ g.id }}, '{{ g.name|replace("'", "\\'") }}')" title="Delete group"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-people fs-1 d-block mb-2"></i>
+                <p>You haven't created any groups yet</p>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal"><i class="bi bi-plus-lg me-1"></i>Create Your First Group</button>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# ---- Joined Groups Tab ---- #}
+        <div class="tab-pane fade {% if session.get('role')!='alumni' %}show active{% endif %}" id="joinedGroups">
+            {% if joined_groups %}
+            <div class="row g-3">
+                {% for g in joined_groups %}
+                <div class="col-lg-4 col-md-6 group-card" data-name="{{ g.name|lower }}" data-domain="{{ (g.domain or '')|lower }}">
+                    <div class="card border-0 shadow-sm h-100 group-card-inner border-start border-success border-3">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="{{ url_for('static', filename='images/default.svg') if not g.mentor_pic or g.mentor_pic=='default.svg' else '/uploads/'+g.mentor_pic }}" class="rounded-circle me-2 border border-secondary" width="28" height="28" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                <small class="text-muted">{{ g.mentor_name }}</small>
+                                <span class="ms-auto badge bg-primary bg-opacity-25 text-primary border border-primary" style="font-size:0.6rem;">Mentor</span>
+                            </div>
+                            <h5 class="fw-bold mb-1"><a href="{{ url_for('mentorship.group_detail', group_id=g.id) }}" class="text-decoration-none text-white">{{ g.name }}</a></h5>
+                            {% if g.domain %}<span class="badge bg-info bg-opacity-25 text-info border border-info mb-2">{{ g.domain }}</span>{% endif %}
+                            <p class="text-muted small mb-2 flex-grow-1">{{ g.description or 'No description' }}</p>
+                            {% set max_mem = g.max_members or 50 %}
+                            {% set pct = (g.member_count / max_mem * 100)|round if max_mem > 0 else 0 %}
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted"><i class="bi bi-people me-1"></i>{{ g.member_count }}/{{ max_mem }} members</span>
+                                </div>
+                                <div class="progress" style="height:4px">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width:{{ pct }}%"></div>
+                                </div>
+                            </div>
+                            <a href="{{ url_for('mentorship.group_detail', group_id=g.id) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-box-arrow-in-right me-1"></i>Open</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-box-arrow-in-right fs-1 d-block mb-2"></i>
+                <p>You haven't joined any groups</p>
+                <a href="#availableGroups" class="btn btn-outline-primary btn-sm" data-bs-toggle="pill"><i class="bi bi-search me-1"></i>Browse Available Groups</a>
+            </div>
+            {% endif %}
+        </div>
+
+        {# ---- Available Groups Tab ---- #}
+        <div class="tab-pane fade" id="availableGroups">
+            {% if available_groups %}
+            <div class="row g-3">
+                {% for g in available_groups %}
+                <div class="col-lg-4 col-md-6 group-card" data-name="{{ g.name|lower }}" data-domain="{{ (g.domain or '')|lower }}">
+                    <div class="card border-0 shadow-sm h-100 group-card-inner border-start border-warning border-3">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="{{ url_for('static', filename='images/default.svg') if not g.mentor_pic or g.mentor_pic=='default.svg' else '/uploads/'+g.mentor_pic }}" class="rounded-circle me-2 border border-secondary" width="28" height="28" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                <small class="text-muted">{{ g.mentor_name }}</small>
+                                <span class="ms-auto badge bg-primary bg-opacity-25 text-primary border border-primary" style="font-size:0.6rem;">Mentor</span>
+                            </div>
+                            <h5 class="fw-bold mb-1">{{ g.name }}</h5>
+                            {% if g.domain %}<span class="badge bg-info bg-opacity-25 text-info border border-info mb-2">{{ g.domain }}</span>{% endif %}
+                            <p class="text-muted small mb-2 flex-grow-1">{{ g.description or 'No description' }}</p>
+                            {% set max_mem = g.max_members or 50 %}
+                            {% set pct = (g.member_count / max_mem * 100)|round if max_mem > 0 else 0 %}
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted"><i class="bi bi-people me-1"></i>{{ g.member_count }}/{{ max_mem }}</span>
+                                </div>
+                                <div class="progress" style="height:4px">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width:{{ pct }}%"></div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                {% if g.my_status == 'pending' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Requested</span>
+                                {% elif g.my_status == 'rejected' %}
+                                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-primary w-100" onclick="joinGroup({{ g.id }}, this)"><i class="bi bi-person-plus me-1"></i>Join Group</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-search fs-1 d-block mb-2"></i>
+                <p>No open groups available right now</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ==================== CREATE GROUP MODAL (Alumni only) ==================== #}
+{% if session.get('role')=='alumni' %}
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Create Group</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Group Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="groupName" placeholder="e.g. Web Development Mentorship" maxlength="200">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-journal-text me-1"></i>Description</label>
+                    <textarea class="form-control bg-secondary text-white border-secondary" id="groupDescription" rows="3" placeholder="What is this group about? What will members learn?"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-tag me-1"></i>Domain</label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="groupDomain" placeholder="e.g. Computer Science, Data Science, Design">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-people me-1"></i>Max Members</label>
+                    <input type="number" class="form-control bg-secondary text-white border-secondary" id="groupMaxMembers" value="20" min="2" max="200">
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createGroup()"><i class="bi bi-check-lg me-1"></i>Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ==================== DELETE GROUP CONFIRMATION MODAL ==================== #}
+{% if session.get('role')=='alumni' %}
+<div class="modal fade" id="deleteGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash me-2"></i>Delete Group</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteGroupMsg">Are you sure you want to delete <strong id="deleteGroupName"></strong>?</p>
+                <small class="text-muted">All messages, tasks, and announcements will be permanently removed.</small>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteGroupBtn" onclick="executeDeleteGroup()"><i class="bi bi-trash me-1"></i>Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# -- Groups JavaScript -- #}
+<script>
+function createGroup() {
+    const name = document.getElementById('groupName').value.trim();
+    if (!name) { showToast('Group name is required', 'warning'); return; }
+    const btn = document.querySelector('#createGroupModal .btn-primary');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+    fetch('/api/mentorship/groups/create', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name, description: document.getElementById('groupDescription').value.trim(),
+            domain: document.getElementById('groupDomain').value.trim(),
+            max_members: parseInt(document.getElementById('groupMaxMembers').value) || 20
+        })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create';
+        if (d.success) { showToast('Group created!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createGroupModal')).hide();
+            setTimeout(() => location.reload(), 1000);
+        } else { showToast(d.message, 'danger'); }
+    }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Create'; showToast('Error creating group', 'danger'); });
+}
+
+function joinGroup(groupId, btn) {
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+    fetch('/api/mentorship/groups/join', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ group_id: groupId })
+    }).then(r => r.json()).then(d => {
+        if (d.success) { btn.innerHTML = '<i class="bi bi-check me-1"></i>Requested'; btn.className = 'btn btn-sm btn-warning w-100'; showToast('Join request sent!', 'success'); }
+        else { btn.disabled = false; btn.innerHTML = '<i class="bi bi-person-plus me-1"></i>Join Group'; showToast(d.message, 'danger'); }
+    }).catch(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-person-plus me-1"></i>Join Group'; showToast('Error', 'danger'); });
+}
+
+function filterGroups() {
+    const q = document.getElementById('groupSearch').value.toLowerCase();
+    document.querySelectorAll('.group-card').forEach(c => {
+        const name = c.dataset.name || '';
+        const domain = c.dataset.domain || '';
+        c.style.display = name.includes(q) || domain.includes(q) ? '' : 'none';
+    });
+}
+
+{% if session.get('role')=='alumni' %}
+var deletingGroupId = null;
+
+function confirmDeleteGroup(groupId, groupName) {
+    deletingGroupId = groupId;
+    document.getElementById('deleteGroupName').textContent = groupName;
+    new bootstrap.Modal(document.getElementById('deleteGroupModal')).show();
+}
+
+function executeDeleteGroup() {
+    const btn = document.getElementById('deleteGroupBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+    fetch('/api/mentorship/groups/delete', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ group_id: deletingGroupId })
+    }).then(r => r.json()).then(d => {
+        if (d.success) { showToast(d.message, 'success'); setTimeout(() => location.reload(), 1000); }
+        else { showToast(d.message, 'danger'); }
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+        bootstrap.Modal.getInstance(document.getElementById('deleteGroupModal')).hide();
+    }).catch(() => {
+        showToast('Error deleting group', 'danger');
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+    });
+}
+{% endif %}
+</script>
+{% endblock %}

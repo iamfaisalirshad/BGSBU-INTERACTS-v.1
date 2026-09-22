@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Active Jobs - Dashboard{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-briefcase text-info me-2"></i>Active Jobs & Internships</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> available positions</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-6">
+                    <input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search jobs..." value="{{ search }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="job_type" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        <option value="Full-time" {% if job_type_filter == 'Full-time' %}selected{% endif %}>Full-time</option>
+                        <option value="Part-time" {% if job_type_filter == 'Part-time' %}selected{% endif %}>Part-time</option>
+                        <option value="Internship" {% if job_type_filter == 'Internship' %}selected{% endif %}>Internship</option>
+                        <option value="Freelance" {% if job_type_filter == 'Freelance' %}selected{% endif %}>Freelance</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if jobs %}
+    <div class="space-y-3">
+        {% for job in jobs %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <div class="row align-items-start">
+                    <div class="col-md-8">
+                        <h5 class="fw-bold mb-1">
+                            <i class="bi bi-briefcase-fill text-info me-2"></i>{{ job.title }}
+                        </h5>
+                        <p class="text-muted mb-2">
+                            <strong>{{ job.company }}</strong> • {{ job.location or 'Remote' }}
+                            <span class="badge bg-{{ 'info' if job.job_type == 'Internship' else 'success' if job.job_type == 'Full-time' else 'warning' }} ms-2">{{ job.job_type }}</span>
+                        </p>
+                        {% if job.salary %}<p class="text-info mb-2"><i class="bi bi-currency-dollar me-1"></i>{{ job.salary }}</p>{% endif %}
+                        <p class="text-muted small">{{ job.description[:150] }}{% if job.description|length > 150 %}...{% endif %}</p>
+                        <small class="text-muted"><i class="bi bi-calendar me-1"></i>Posted {{ job.created_at.strftime('%b %d, %Y') if job.created_at else 'Recently' }}</small>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" class="btn btn-primary mb-2 d-block"><i class="bi bi-eye me-1"></i>View Details</a>
+                        <button type="button" class="btn btn-outline-success w-100" onclick="applyForJob({{ job.id }}, this)"><i class="bi bi-check-circle me-1"></i>Apply Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_jobs_view', page=1, search=search, job_type=job_type_filter) }}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_jobs_view', page=page-1, search=search, job_type=job_type_filter) }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_jobs_view', page=p, search=search, job_type=job_type_filter) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_jobs_view', page=page+1, search=search, job_type=job_type_filter) }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_jobs_view', page=total_pages, search=search, job_type=job_type_filter) }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-briefcase display-4 d-block mb-3"></i>
+            <p>No jobs found matching your search.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script>
+function applyForJob(jobId, btn){
+    fetch('/api/apply-job', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({job_id: jobId})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Applied';
+            btn.disabled = true;
+            btn.className = 'btn btn-success w-100';
+            showToast('Application submitted', 'success');
+        } else {
+            showToast(d.message || 'Error applying', 'danger');
+        }
+    });
+}
+</script>
+{% endblock %}

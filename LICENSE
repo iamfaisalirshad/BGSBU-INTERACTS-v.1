@@ -1,0 +1,131 @@
+NON-COMMERCIAL ACADEMIC USE LICENSE
+Copyright (c) 2024 Syed Faisal Irshad
+All Rights Reserved.
+
+================================================================
+OWNER & RIGHTS
+================================================================
+This project ("BGSBU Interacts - Alumni & Student Connection
+Platform") is the intellectual property of Syed Faisal Irshad.
+Syed Faisal Irshad retains full and exclusive rights over this
+project, including all source code, design, documentation, and
+associated materials.
+
+================================================================
+GRANT OF LICENSE
+================================================================
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to use, copy, and modify the Software
+for the following purposes ONLY:
+
+  (a) Academic evaluation and review
+  (b) Personal learning and educational purposes
+  (c) Non-commercial demonstration
+
+This license is strictly limited to the scenarios listed above.
+
+================================================================
+RESTRICTIONS & PROHIBITIONS
+================================================================
+The following uses are STRICTLY PROHIBITED without express prior
+written permission from Syed Faisal Irshad:
+
+  1. COMMERCIAL USE
+     - Selling, sublicensing, or using the Software or any
+       derivative work for any commercial or monetary purpose.
+
+  2. REDISTRIBUTION
+     - Distributing, publishing, or sharing the Software (in
+       whole or in part) on any public or private platform,
+       repository, or medium without written permission.
+
+  3. CLAIMING OWNERSHIP
+     - Presenting this Software or any part of it as one's own
+       work, whether for academic credit, professional gain,
+       or any other purpose.
+
+  4. MISUSE OF DATA & CREDENTIALS
+     - Accessing, extracting, copying, or disclosing any user
+       data, credentials, API keys, email accounts, or any
+       other sensitive information associated with this project.
+
+  5. REVERSE ENGINEERING FOR COMPETITIVE USE
+     - Using the Software as a basis for building a competing
+       or similar product for commercial purposes.
+
+  6. REMOVAL OF ATTRIBUTION
+     - Removing or altering any copyright notice, license file,
+       attribution, or author credit from the Software.
+
+  7. MALICIOUS USE
+     - Using the Software or any derivative work for any
+       purpose that is illegal, harmful, or intended to cause
+       damage to any person, institution, or system.
+
+================================================================
+EXCLUDED COMPONENTS
+================================================================
+The following components are EXPLICITLY EXCLUDED from any
+license grant and remain the sole private property of their
+respective owners:
+
+  1. API keys, tokens, and service credentials
+  2. Email accounts and associated passwords
+  3. Database data (user records, profiles, messages, etc.)
+  4. Private configuration files (.env and similar)
+  5. Test account credentials
+
+No permission is granted to use, access, or disclose any of
+these components.
+
+================================================================
+VIOLATIONS & LEGAL ACTION
+================================================================
+Any unauthorized use, distribution, or misattribution of this
+software will be considered a violation of copyright and
+intellectual property rights. Syed Faisal Irshad reserves the
+right to take legal action against any party found in violation
+of this license, including but not limited to:
+
+  - DMCA takedown requests
+  - Cease and desist notices
+  - Civil litigation for damages
+
+================================================================
+LIMITATION OF LIABILITY
+================================================================
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED. IN NO EVENT SHALL SYED FAISAL IRSHAD BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
+AN ACTION OF CONTRACT, TORT, OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+================================================================
+GOVERNING LAW
+================================================================
+This license shall be governed by and construed in accordance
+with the laws of India. Any disputes arising under this license
+shall be subject to the exclusive jurisdiction of the courts
+in Rajouri, Jammu & Kashmir, India.
+
+================================================================
+CONTACT
+================================================================
+For any inquiries regarding this license or to request
+permission for use beyond the scope of this license:
+
+  Syed Faisal Irshad
+  Email: [Contact the owner directly]
+
+================================================================
+ACCEPTANCE
+================================================================
+By using, copying, or modifying this Software, you agree to be
+bound by the terms and conditions of this license. If you do
+not agree, you must not use, copy, or modify the Software.
+
+================================================================
+END OF LICENSE
+================================================================

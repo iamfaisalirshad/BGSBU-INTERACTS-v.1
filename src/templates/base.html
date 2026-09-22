@@ -1,0 +1,407 @@
+{# ============================================================ #}
+{# Base layout template for BGSBU Interacts                     #}
+{# Provides the HTML shell, navbar, flash messages, and scripts #}
+{# Extended by all auth-protected and public pages               #}
+{# ============================================================ #}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+{# ==================== HEAD ==================== #}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BGSBU Interacts{% endblock %}</title>
+    <link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendor/bootstrap-icons/css/bootstrap-icons.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {# ==================== AUTHENTICATED USER LAYOUT ==================== #}
+    {% if current_user %}
+    {# -- Navbar (authenticated user) -- #}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark-custom fixed-top shadow-lg">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('dashboard.dashboard') }}">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="BGSBU Logo" width="32" height="32" class="me-2 rounded shadow-sm">
+                <span class="gradient-text">BGSBU Interacts</span>
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if current_user.role != 'admin' %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard.dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+
+                    {# -- Network Dropdown -- #}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="bi bi-people me-1"></i>Network</a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><h6 class="dropdown-header">Discover</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('directory.alumni_directory') }}"><i class="bi bi-search me-2"></i>Browse</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('connections.connections_page') }}"><i class="bi bi-people me-2"></i>Connections</a></li>
+                        </ul>
+                    </li>
+
+                    {# -- Opportunities Dropdown -- #}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="bi bi-briefcase me-1"></i>Opportunities</a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><h6 class="dropdown-header">Jobs</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('jobs.jobs_page') }}"><i class="bi bi-briefcase me-2"></i>Browse Jobs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('dashboard.dashboard_applied_jobs') }}"><i class="bi bi-journal-check me-2"></i>My Applications</a></li>
+                            {% if current_user.role == 'alumni' %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Post</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('jobs.post_job') }}"><i class="bi bi-plus-circle me-2"></i>Post a Job</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('jobs.my_postings') }}"><i class="bi bi-list-ul me-2"></i>My Postings</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+
+                    {# -- Mentorship Dropdown -- #}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="bi bi-person-workspace me-1"></i>Mentorship</a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><h6 class="dropdown-header">Mentorship</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('mentorship.mentorship_page') }}"><i class="bi bi-person-hearts me-2"></i>Find Mentors</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('mentorship.mentorship_dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>My Mentorship</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Groups</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('mentorship.mentorship_groups') }}"><i class="bi bi-people-fill me-2"></i>Groups</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('mentorship.mentorship_resources') }}"><i class="bi bi-folder-fill me-2"></i>Resources</a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="bi bi-shield-lock me-1"></i>Admin</a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Users</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.all_users') }}"><i class="bi bi-people me-2"></i>All Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.manage_users') }}"><i class="bi bi-person-gear me-2"></i>Manage Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.dashboard_pending_approvals') }}"><i class="bi bi-clock-history me-2"></i>Pending Approvals</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Content</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_mentorship_management') }}"><i class="bi bi-person-hearts me-2"></i>Mentorships</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_pending_jobs') }}"><i class="bi bi-briefcase me-2"></i>Pending Jobs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_job_applications') }}"><i class="bi bi-journal-check me-2"></i>Applications</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Oversight</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_groups_oversight') }}"><i class="bi bi-people-fill me-2"></i>All Groups</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_messages_oversight') }}"><i class="bi bi-chat-dots me-2"></i>All Messages</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_sessions_oversight') }}"><i class="bi bi-calendar-event me-2"></i>All Sessions</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">System</h6></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.manage_protocols') }}"><i class="bi bi-sliders me-2"></i>Protocols</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav align-items-center">
+                    {# -- Messages Button -- #}
+                    <li class="nav-item mx-1">
+                        <a id="messageHeaderLink" href="{{ url_for('chat.chat_page') }}" class="btn nav-link position-relative py-0 d-flex align-items-center" aria-label="Messages">
+                            <i class="bi bi-chat-dots fs-5"></i>
+                            {% if unread_messages > 0 %}<span id="messageBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.55rem;">{{ unread_messages }}</span>{% endif %}
+                        </a>
+                    </li>
+                    {# -- Notification Bell -- #}
+                    <li class="nav-item dropdown mx-1" id="notificationBell">
+                        <button class="btn nav-link position-relative py-0" id="notifBtn" type="button" onclick="toggleNotifPanel()" aria-label="Notifications">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.55rem;{% if notification_count == 0 %}display:none{% endif %}">
+                                {{ notification_count }}
+                            </span>
+                        </button>
+                        {# -- Notification Dropdown Panel -- #}
+                        <div id="notifPanel" class="notif-panel shadow-lg rounded-3" style="display:none;position:absolute;top:100%;right:0;width:380px;max-height:480px;z-index:9999;background:var(--bs-dark);border:1px solid var(--bs-border-color);overflow:hidden">
+                            <div class="notif-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-secondary">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-bell me-1"></i>Notifications</h6>
+                                <div>
+                                    <button class="btn btn-sm btn-link text-decoration-none p-0 me-2" onclick="markAllNotifRead()" title="Mark all as read"><i class="bi bi-check-all"></i></button>
+                                    <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="toggleNotifPanel()" title="Close"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </div>
+                            <div id="notifList" class="notif-list" style="overflow-y:auto;max-height:400px">
+                                <div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading...</div>
+                            </div>
+                            <div class="notif-footer d-flex justify-content-between align-items-center px-3 py-2 border-top border-secondary">
+                                <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="clearNotifPanel()"><i class="bi bi-check-all me-1"></i>Clear All</button>
+                                <a href="{{ url_for('dashboard.dashboard_notifications') }}" class="btn btn-sm btn-link text-decoration-none p-0"><i class="bi bi-eye me-1"></i>View All</a>
+                            </div>
+                        </div>
+                    </li>
+                    {# -- User Dropdown -- #}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+                            <img src="{{ url_for('static', filename='images/default.svg') if not current_user.profile_pic or current_user.profile_pic == 'default.svg' else '/uploads/' + current_user.profile_pic }}"
+                                class="rounded-circle me-2" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                            <span class="d-none d-md-inline">{{ current_user.name }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg">
+                            {% if current_user.role == 'admin' %}
+                            <li><span class="dropdown-item-text text-warning fw-bold"><i class="bi bi-shield-lock me-2"></i>Administrator</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.all_users') }}"><i class="bi bi-people me-2"></i>All Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.manage_protocols') }}"><i class="bi bi-sliders me-2"></i>Protocol Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% else %}
+                            <li><a class="dropdown-item" href="{{ url_for('profile.my_profile') }}"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('profile.edit_profile') }}"><i class="bi bi-pencil me-2"></i>Edit Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {# -- Main content (authenticated) -- #}
+    <main class="main-content">
+        <div class="container-fluid px-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-messages mt-3">{% for category, message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert"><i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}</div>{% endif %}{% endwith %}
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    {# ==================== GUEST / UNAUTHENTICATED LAYOUT ==================== #}
+    {% else %}
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container mt-3">{% for category, message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}</div>{% endif %}{% endwith %}
+        {% block auth_content %}{% endblock %}
+    </main>
+    {% endif %}
+
+    {# ==================== SHARED CONFIRMATION MODAL ==================== #}
+    <div class="modal fade" id="confirmModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-dark border-secondary">
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-triangle display-4 text-warning d-block mb-3"></i>
+                    <p class="fw-bold mb-0" id="confirmModalMessage"></p>
+                </div>
+                <div class="modal-footer border-secondary justify-content-center">
+                    <button type="button" class="btn btn-secondary" id="confirmNoBtn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmYesBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== SCRIPTS ==================== #}
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    // Auto-add CSRF token to all fetch POST/PUT/DELETE requests
+    (function() {
+        const origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+            opts = opts || {};
+            if (opts.method && ['POST', 'PUT', 'DELETE'].includes(opts.method.toUpperCase())) {
+                var token = document.querySelector('meta[name="csrf-token"]');
+                if (token) {
+                    token = token.getAttribute('content');
+                    if (opts.headers instanceof Headers) {
+                        if (!opts.headers.has('X-CSRF-Token')) {
+                            opts.headers.set('X-CSRF-Token', token);
+                        }
+                    } else {
+                        opts.headers = opts.headers || {};
+                        if (!opts.headers['X-CSRF-Token'] && !opts.headers['X-CSRF-TOKEN']) {
+                            opts.headers['X-CSRF-Token'] = token;
+                        }
+                    }
+                }
+            }
+            return origFetch(url, opts);
+        };
+    })();
+    </script>
+    {# ==================== NOTIFICATION SYSTEM ==================== #}
+    <script>
+    let notifPollInterval = null;
+
+    function toggleNotifPanel() {
+        const panel = document.getElementById('notifPanel');
+        if (panel.style.display === 'block') {
+            panel.style.display = 'none';
+        } else {
+            panel.style.display = 'block';
+            loadNotifPanel();
+        }
+    }
+
+    function loadNotifPanel() {
+        const list = document.getElementById('notifList');
+        list.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading...</div>';
+        fetch('/api/notifications?page=1')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { list.innerHTML = '<div class="text-center text-muted py-4">Failed to load</div>'; return; }
+                const notifs = data.notifications || [];
+                if (notifs.length === 0) {
+                    list.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-bell-slash fs-3 d-block mb-2"></i>No notifications yet</div>';
+                    return;
+                }
+                list.innerHTML = '';
+                notifs.forEach(n => {
+                    const isUnread = n.is_read == 0;
+                    const item = document.createElement('div');
+                    item.className = 'notif-item d-flex align-items-start gap-2 px-3 py-2 border-bottom border-secondary' + (isUnread ? ' bg-dark' : '');
+                    item.style.cursor = 'pointer';
+                    const iconMap = {
+                        'connection_request': 'bi-person-plus-fill text-info',
+                        'connection_accepted': 'bi-check-circle-fill text-success',
+                        'connection_response': 'bi-person-check-fill text-primary',
+                        'message_request': 'bi-chat-dots-fill text-warning',
+                        'message_request_accepted': 'bi-chat-square-text-fill text-success',
+                        'new_message': 'bi-envelope-fill text-primary',
+                        'mentorship_request': 'bi-person-workspace-fill text-info',
+                        'mentorship_accepted': 'bi-star-fill text-warning',
+                        'mentor_verified': 'bi-patch-check-fill text-success',
+                        'group_join': 'bi-people-fill text-info',
+                        'group_membership': 'bi-person-hearts text-primary',
+                        'group_added': 'bi-person-plus-fill text-success',
+                        'group_task': 'bi-list-task text-warning',
+                        'job_application': 'bi-briefcase-fill text-info',
+                        'application_update': 'bi-journal-check text-primary',
+                        'job_approval': 'bi-check-circle-fill text-success',
+                        'account_approved': 'bi-person-check-fill text-success',
+                        'system': 'bi-gear-fill text-secondary',
+                        'admin': 'bi-shield-fill text-danger'
+                    };
+                    const iconClass = iconMap[n.type] || 'bi-info-circle-fill text-info';
+                    const targetUrl = n.portal_url || n.action_url || '#';
+                    item.onclick = function() { clickNotif(n.id, targetUrl); };
+                    item.innerHTML = '<div class="mt-1"><i class="bi ' + iconClass + ' fs-5"></i></div>' +
+                        '<div class="flex-grow-1 min-width-0"><div class="d-flex justify-content-between"><strong class="small">' + escapeHtml(n.title || '') + '</strong></div>' +
+                        '<p class="mb-0 small text-muted text-truncate">' + escapeHtml(n.message || '') + '</p>' +
+                        '<small class="text-muted" style="font-size:0.7rem">' + timeAgo(n.created_at) + '</small></div>' +
+                        (isUnread ? '<div class="mt-2"><span class="badge bg-primary rounded-pill" style="width:8px;height:8px;display:inline-block;padding:0">&nbsp;</span></div>' : '');
+                    list.appendChild(item);
+                });
+            })
+            .catch(() => {
+                list.innerHTML = '<div class="text-center text-muted py-4">Failed to load notifications</div>';
+            });
+    }
+
+    function clickNotif(id, url) {
+        // Mark as read first, then navigate on success
+        fetch('/api/notifications/mark-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notification_id: id, next_url: url })
+        })
+        .then(r => r.json())
+        .then(data => {
+            updateNotifBadge();
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else if (url && url !== '#') {
+                window.location.href = url;
+            }
+        })
+        .catch(() => {
+            if (url && url !== '#') { window.location.href = url; }
+        });
+    }
+
+    function markAllNotifRead() {
+        fetch('/api/notifications/mark-all-read', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+            .then(r => r.json()).then(data => {
+                if (data.success) { updateNotifBadge(); if (document.getElementById('notifPanel').style.display === 'block') { clearNotifPanel(); } }
+            }).catch(() => {});
+    }
+
+    function clearNotifPanel() {
+        // Mark all as read, then show empty state in the panel
+        fetch('/api/notifications/mark-all-read', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+            .then(r => r.json()).then(data => {
+                if (data.success) {
+                    updateNotifBadge();
+                    document.getElementById('notifList').innerHTML =
+                        '<div class="text-center text-muted py-4"><i class="bi bi-bell-slash fs-3 d-block mb-2"></i>No notifications yet</div>';
+                }
+            }).catch(() => {});
+    }
+
+    function updateNotifBadge() {
+        fetch('/api/notifications/unread-count')
+            .then(r => r.json()).then(data => {
+                const badge = document.getElementById('notifBadge');
+                if (data.success) {
+                    badge.textContent = data.count;
+                    badge.style.display = data.count > 0 ? 'inline' : 'none';
+                }
+            }).catch(() => {});
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        var date = new Date(dateStr.replace(' ', 'T') + 'Z');
+        if (isNaN(date.getTime())) return dateStr;
+        var now = new Date();
+        var diff = Math.floor((now - date) / 1000);
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        if (diff < 2592000) return Math.floor(diff / 86400) + 'd ago';
+        return date.toLocaleDateString();
+    }
+
+    // Close notification panel on outside click
+    document.addEventListener('click', function(e) {
+        var bell = document.getElementById('notificationBell');
+        var panel = document.getElementById('notifPanel');
+        if (bell && panel && panel.style.display === 'block' && !bell.contains(e.target)) {
+            panel.style.display = 'none';
+        }
+    });
+
+    // Poll for new notifications every 30 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        updateNotifBadge();
+        notifPollInterval = setInterval(updateNotifBadge, 30000);
+    });
+
+    // ==================== SHARED CONFIRMATION MODAL ====================
+    var _confirmInstance = null;
+    var _confirmCallback = null;
+    function customConfirm(message, callback) {
+        document.getElementById('confirmModalMessage').textContent = message;
+        _confirmCallback = callback;
+        if (!_confirmInstance) {
+            _confirmInstance = new bootstrap.Modal(document.getElementById('confirmModal'));
+        }
+        _confirmInstance.show();
+    }
+    document.addEventListener('click', function(e) {
+        var yes = e.target.closest('#confirmYesBtn');
+        var no = e.target.closest('#confirmNoBtn');
+        if (!yes && !no) return;
+        if (_confirmInstance) _confirmInstance.hide();
+        var cb = _confirmCallback;
+        _confirmCallback = null;
+        if (cb) cb(!!yes);
+    });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

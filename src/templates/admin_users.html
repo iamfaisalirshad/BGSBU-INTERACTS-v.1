@@ -1,0 +1,26 @@
+{# =============================================================================
+   All Users - Admin users listing with search, role filter, and management
+   actions for approving, toggling active status, editing, and deleting users.
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}All Users - Admin{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4"><h3 class="fw-bold mb-0">All Users</h3><a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a></div>
+    {# -- Search & Filter Form -- #}
+    <div class="card border-0 shadow-sm mb-4"><div class="card-body"><form method="GET" class="row g-3"><div class="col-md-6"><input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search by name or email..." value="{{ search }}"></div><div class="col-md-3"><select name="role" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()"><option value="" {{ 'selected' if not role_filter or role_filter == '' }}>All Roles ({{ total_all }})</option><option value="student" {{ 'selected' if role_filter == 'student' }}>Students ({{ total_students }})</option><option value="alumni" {{ 'selected' if role_filter == 'alumni' }}>Alumni ({{ total_alumni }})</option><option value="admin" {{ 'selected' if role_filter == 'admin' }}>Admins ({{ total_admins }})</option></select></div><div class="col-md-3"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button></div></form></div></div>
+    {# ==================== USERS TABLE ==================== #}
+    <div class="card border-0 shadow-sm"><div class="card-body p-0"><div class="table-responsive"><table class="table table-dark table-hover mb-0"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Dept</th><th>Roll</th><th>Semester</th><th>Batch</th><th>Company</th><th>Job Title</th><th>Registered On</th><th>Status</th></tr></thead><tbody>{% for u in users %}<tr id="user-{{ u.id }}"><td>{{ loop.index }}</td><td><div class="d-flex align-items-center gap-2"><img src="{{ url_for('static', filename='images/default.svg') if not u.profile_pic or u.profile_pic=='default.svg' else '/uploads/'+u.profile_pic }}" class="rounded-circle" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'"><a href="{{ url_for('profile.view_profile', user_id=u.id) }}" class="text-decoration-none text-white">{{ u.name }}</a></div></td><td class="small">{{ u.email }}</td><td>{{ u.phone or '-' }}</td><td><span class="badge bg-{{ 'info' if u.role=='student' else 'success' }}">{{ u.role|capitalize }}</span>{% if u.role == 'alumni' and u.is_mentor %}<span class="badge bg-warning text-dark ms-1">Mentor</span>{% endif %}{% if u.role == 'alumni' and u.mentor_verified %}<span class="badge bg-primary ms-1">Verified</span>{% endif %}</td>
+<td>{{ u.department or '-' }}</td>
+<td>{{ u.roll_number or '-' }}</td>
+<td>{% if u.role == 'student' %}{% if u.student_year == 0 %}Degree Completed{% elif u.student_year %}Sem {{ u.student_year }}{% endif %}{% elif u.role == 'alumni' %}{% if u.passing_year %}{{ u.passing_year }}{% endif %}{% endif %}</td>
+<td>{% if u.role == 'student' %}{% if u.joining_year and u.passing_year %}{{ u.joining_year }}–{{ u.passing_year }}{% elif u.batch_year %}{{ u.batch_year }}{% else %}-{% endif %}{% else %}-{% endif %}</td>
+<td>{% if u.role != 'student' %}{{ u.company or '-' }}{% else %}-{% endif %}</td>
+<td>{% if u.role != 'student' %}{{ u.current_job_title or '-' }}{% else %}-{% endif %}</td>
+<td><small class="text-muted">{{ u.created_at.strftime('%b %d, %Y') if u.created_at else '-' }}</small></td>
+<td><span class="badge bg-{{ 'success' if u.is_active else 'danger' }}">{{ 'Active' if u.is_active else 'Inactive' }}</span></td>
+</tr>{% endfor %}</tbody></table></div></div></div>
+    <p class="text-muted mt-3">Total: {{ users|length }}</p>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{# =============================================================================
+   Pending Approvals - Admin dashboard for reviewing and approving/rejecting
+   new user registrations with pagination support.
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}Pending Approvals - Admin Dashboard{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-hourglass-split text-warning me-2"></i>Pending Approvals</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> pending users</p>
+        </div>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Admin Dashboard</a>
+    </div>
+
+    {# ==================== PENDING USER CARDS ==================== #}
+    {% if users %}
+    <div class="row g-3 mb-4">
+        {% for user in users %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm border-start border-warning border-3" id="user-{{ user.id }}">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-auto">
+                            <img src="{{ url_for('static', filename='images/default.svg') if not user.profile_pic or user.profile_pic == 'default.svg' else '/uploads/'+user.profile_pic }}" 
+                                 class="rounded-circle" width="80" height="80" style="object-fit:cover" 
+                                 onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        </div>
+                        <div class="col flex-grow-1">
+                            <h6 class="fw-semibold mb-1">
+                                <a href="{{ url_for('profile.view_profile', user_id=user.id) }}" class="text-decoration-none text-white">{{ user.name }}</a>
+                                <span class="badge bg-{{ 'info' if user.role == 'student' else 'success' }}">{{ user.role|capitalize }}</span>
+                            </h6>
+                            <p class="text-muted small mb-1">{{ user.email }}</p>
+                            {% if user.phone %}<p class="text-muted small mb-1"><i class="bi bi-phone me-1"></i>{{ user.phone }}</p>{% endif %}
+                            {% if user.department %}<p class="text-muted small mb-1"><i class="bi bi-building me-1"></i>{{ user.department }}</p>{% endif %}
+                            {% if user.roll_number %}<p class="text-muted small mb-1"><i class="bi bi-person-badge me-1"></i>{{ user.roll_number }}</p>{% endif %}
+                            {% if user.role == 'student' %}
+                                {% if user.joining_year and user.passing_year %}<p class="text-muted small mb-1"><i class="bi bi-calendar me-1"></i>Batch {{ user.joining_year }}–{{ user.passing_year }}</p>{% endif %}
+                                {% if user.student_year == 0 %}<p class="text-muted small mb-1"><i class="bi bi-mortarboard me-1"></i>Degree Completed</p>{% elif user.student_year %}<p class="text-muted small mb-1"><i class="bi bi-mortarboard me-1"></i>Semester {{ user.student_year }}</p>{% endif %}
+                            {% else %}
+                                {% if user.passing_year %}<p class="text-muted small mb-1"><i class="bi bi-calendar-check me-1"></i>Passing Year: {{ user.passing_year }}</p>{% endif %}
+                                {% if user.company %}<p class="text-muted small mb-1"><i class="bi bi-briefcase me-1"></i>{{ user.company }}</p>{% endif %}
+                                {% if user.current_job_title %}<p class="text-muted small mb-1"><i class="bi bi-person-workspace me-1"></i>{{ user.current_job_title }}</p>{% endif %}
+                            {% endif %}
+                            <small class="text-muted"><i class="bi bi-calendar me-1"></i>Joined {{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'Recently' }}</small>
+                        </div>
+                        <div class="col-auto d-flex gap-2 align-items-center">
+                            <button type="button" class="btn btn-success" onclick="approveUser({{ user.id }})"><i class="bi bi-check-circle me-1"></i>Approve</button>
+                            <button type="button" class="btn btn-danger" onclick="rejectUser({{ user.id }})"><i class="bi bi-x-circle me-1"></i>Reject</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# -- Empty State -- #}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-hourglass-split display-4 d-block mb-3"></i>
+            <p>No pending approvals</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# -- Approve/Reject scripts -- #}
+<script>
+function approveUser(id){
+    fetch('/api/admin/approve-user', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: id})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            const card = document.getElementById('user-' + id);
+            if(card) card.remove();
+            showToast('User approved!', 'success');
+        }
+    });
+}
+
+function rejectUser(id){
+    customConfirm('Reject this user?',function(confirmed){
+    if(!confirmed) return;
+    fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: id})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            const card = document.getElementById('user-' + id);
+            if(card) card.remove();
+            showToast('User rejected', 'success');
+        }
+    });
+    });
+}
+</script>
+{% endblock %}

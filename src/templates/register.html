@@ -1,0 +1,236 @@
+{# ============================================================ #}
+{# Registration page for new students and alumni                #}
+{# Includes live email-check, password-strength, role toggling  #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Register - BGSBU Interacts{% endblock %}
+{% block auth_content %}
+<div class="auth-page">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100 py-5">
+            <div class="col-lg-7 col-md-9">
+                <div class="text-center mb-4">
+                    <i class="bi bi-mortarboard-fill text-primary display-3"></i>
+                    <h2 class="fw-bold mt-2 gradient-text">BGSBU Interacts</h2>
+                    <p class="text-muted">Join the Alumni Connection Platform</p>
+                </div>
+                <div class="card bg-dark-card border-0 shadow-lg">
+                    <div class="card-body p-4 p-md-5">
+                        {# -- Back Link -- #}
+                        <div class="text-center mb-3">
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Home</a>
+                        </div>
+                        <h4 class="text-center mb-4">Create Account</h4>
+                        <form method="POST" id="registerForm" data-loading-text="Creating account...">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
+                            {# -- Row: Name & Email -- #}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Full Name *</label>
+                                    <input type="text" name="name" class="form-control bg-dark border-secondary text-white" required minlength="2">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Email *</label>
+                                    <input type="email" name="email" id="email" class="form-control bg-dark border-secondary text-white" required>
+                                    <div id="email-feedback" class="small mt-1"></div>
+                                </div>
+                            </div>
+                            {# -- Row: Password & Confirm -- #}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" name="password" id="password" class="form-control bg-dark border-secondary text-white" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="let p=document.getElementById('password');p.type=p.type==='password'?'text':'password'">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="mt-2">
+                                        <div class="progress" style="height:4px">
+                                            <div class="progress-bar" id="strength-bar" style="width:0%"></div>
+                                        </div>
+                                        <small id="strength-text" class="text-muted"></small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Confirm Password *</label>
+                                    <input type="password" name="confirm_password" id="confirm_password" class="form-control bg-dark border-secondary text-white" required>
+                                    <div id="password-match" class="small mt-1"></div>
+                                </div>
+                            </div>
+                            {# -- Row: Role & Department -- #}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Role *</label>
+                                    <select name="role" class="form-select bg-dark border-secondary text-white" required>
+                                        <option value="student">Student</option>
+                                        <option value="alumni">Alumni</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Department *</label>
+                                    <select name="department" class="form-select bg-dark border-secondary text-white" id="department" required>
+                                        <option value="">Select Department...</option>
+                                        {% for school, depts in departments.items() %}
+                                            <optgroup label="{{ school }}">
+                                                {% for dept in depts %}
+                                                    <option value="{{ dept }}">{{ dept }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            {# -- Row: Joining & Passing Year -- #}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Joining Year *</label>
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="joining_year" class="form-control bg-dark border-secondary text-white" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Passing Year *</label>
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="passing_year" class="form-control bg-dark border-secondary text-white" required>
+                                </div>
+                            </div>
+                            {# -- Row: Phone & Roll Number -- #}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="tel" name="phone" class="form-control bg-dark border-secondary text-white" placeholder="10-15 digits">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Roll Number *</label>
+                                    <input type="text" name="roll_number" class="form-control bg-dark border-secondary text-white" required placeholder="University Roll No.">
+                                </div>
+                            </div>
+                            {# -- Semester (visible only for students) -- #}
+                            <div class="row" id="semester-row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Current Semester</label>
+                                    <select name="semester" id="semester" class="form-select bg-dark border-secondary text-white">
+                                        <option value="">Select Semester...</option>
+                                        {% for i in range(1, 9) %}
+                                            <option value="{{ i }}" class="sem-option">Semester {{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check form-switch mb-1">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="currently_studying" id="currentlyStudying" value="1" checked>
+                                        <label class="form-check-label" for="currentlyStudying">Currently Studying</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="degree_completed" id="degreeCompletedSwitch" value="1" onchange="toggleRegDegreeCompleted(this.checked)">
+                                        <label class="form-check-label fw-semibold text-info" for="degreeCompletedSwitch">Degree Completed</label>
+                                    </div>
+                                    <small id="degreeCompletedNote" class="text-info d-none"><i class="bi bi-info-circle me-1"></i>Degree Completed status will be sent to admin for approval.</small>
+                                </div>
+                            </div>
+                            <div class="d-grid mt-3">
+                                <button type="submit" class="btn btn-primary btn-lg fw-semibold">
+                                    <i class="bi bi-person-plus me-2"></i>Create Account
+                                </button>
+                            </div>
+                        </form>
+                        <p class="text-center mt-4 mb-0">
+                            Already have an account? <a href="{{ url_for('auth.login') }}" class="text-primary fw-semibold text-decoration-none">Login here</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/password.js') }}"></script>
+<script>
+document.getElementById('email').addEventListener('blur', function(){
+    const email=this.value;
+    if(email){
+        fetch('/check-email',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({email:email})
+        }).then(r=>r.json()).then(d=>{
+            const fb=document.getElementById('email-feedback');
+            fb.innerHTML=d.exists?'<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Email already registered</span>':'<span class="text-success"><i class="bi bi-check-circle"></i> Email available</span>';
+        });
+    }
+});
+
+document.getElementById('confirm_password').addEventListener('input', function(){
+    const fb=document.getElementById('password-match');
+    fb.innerHTML=this.value===document.getElementById('password').value?'<span class="text-success"><i class="bi bi-check-circle"></i> Passwords match</span>':'<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Passwords do not match</span>';
+});
+
+// Pre-select role from URL query parameter
+const urlParams = new URLSearchParams(window.location.search);
+const role = urlParams.get('role');
+const roleSelect = document.querySelector('select[name="role"]');
+if(role && (role === 'student' || role === 'alumni')){
+    roleSelect.value = role;
+}
+
+const degreeSemesters = {{ degree_semesters | tojson }};
+
+function toggleSemester() {
+    const semRow = document.getElementById('semester-row');
+    const sem = document.getElementById('semester');
+    if(roleSelect.value === 'student') {
+        semRow.style.display = 'flex';
+        sem.setAttribute('required', 'required');
+    } else {
+        semRow.style.display = 'none';
+        sem.removeAttribute('required');
+    }
+}
+
+function toggleRegDegreeCompleted(checked) {
+    const sem = document.getElementById('semester');
+    const csCheck = document.getElementById('currentlyStudying');
+    const note = document.getElementById('degreeCompletedNote');
+    if (checked) {
+        sem.disabled = true;
+        sem.value = '';
+        sem.removeAttribute('required');
+        if (csCheck) csCheck.checked = false;
+        note.classList.remove('d-none');
+    } else {
+        sem.disabled = false;
+        sem.setAttribute('required', 'required');
+        note.classList.add('d-none');
+    }
+}
+
+document.getElementById('currentlyStudying')?.addEventListener('change', function() {
+    const dcSwitch = document.getElementById('degreeCompletedSwitch');
+    if (this.checked && dcSwitch && dcSwitch.checked) {
+        dcSwitch.checked = false;
+        toggleRegDegreeCompleted(false);
+    }
+});
+
+function updateSemesterOptions() {
+    const dept = document.querySelector('select[name="department"]').value;
+    const sem = document.getElementById('semester');
+    const currentVal = sem.value;
+    const maxSem = degreeSemesters[dept] || 8;
+    sem.querySelectorAll('.sem-option').forEach(o => o.remove());
+    for (let i = 1; i <= maxSem; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = 'Semester ' + i;
+        opt.className = 'sem-option';
+        sem.appendChild(opt);
+    }
+    if (currentVal > 0 && currentVal <= maxSem) sem.value = currentVal;
+    else sem.value = '';
+}
+
+document.querySelector('select[name="department"]').addEventListener('change', updateSemesterOptions);
+roleSelect.addEventListener('change', toggleSemester);
+toggleSemester();
+updateSemesterOptions();
+</script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{#
+  Mentorship main page for BGSBU Interacts
+  Tabbed interface: Browse mentors, My Requests, Active Mentorships, Mentor Requests
+  Includes mentor toggle and request mentorship modal
+#}
+{% extends "base.html" %}
+{% block title %}Mentorship{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h3 class="fw-bold mb-0"><i class="bi bi-person-workspace text-primary me-2"></i>Mentorship</h3>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('mentorship.mentorship_dashboard') }}" class="btn btn-primary btn-lg shadow-sm" style="font-weight: 600;"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+            {# -- Mentor Toggle Button -- #}
+            {% if session.get('role') in ['alumni','admin'] %}<button class="btn btn-{{ 'danger' if is_mentor else 'success' }} btn-sm" onclick="var b=this;b.disabled=true;b.innerHTML='<span class=\'spinner-border spinner-border-sm me-1\'></span>';fetch('/api/toggle-mentor',{method:'POST',headers:{'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{if(d.success){showToast(d.message,'success');setTimeout(()=>location.reload(),1000);}}).catch(()=>{b.disabled=false;b.innerHTML='<i class=\'bi bi-{{ 'x-circle' if is_mentor else 'star' }} me-1\'></i>{{ 'Remove Mentor' if is_mentor else 'Become Mentor' }}';});"><i class="bi bi-{{ 'x-circle' if is_mentor else 'star' }} me-1"></i>{{ 'Remove Mentor' if is_mentor else 'Become Mentor' }}</button>{% endif %}
+        </div>
+    </div>
+    {# ==================== TAB NAVIGATION ==================== #}
+    <ul class="nav nav-tabs border-secondary mb-4">
+        {# -- Mentors Tab -- #}
+        <li class="nav-item"><a class="nav-link active text-white border-primary border-bottom-0" data-bs-toggle="pill" href="#mentors"><i class="bi bi-people me-1"></i>Available Mentors</a></li>
+        {# -- My Requests Tab (Student only) -- #}
+        {% if session.get('role')=='student' %}<li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#myReqs"><i class="bi bi-send me-1"></i>My Requests <span class="badge bg-info ms-1">{{ my_requests|length }}</span></a></li>{% endif %}
+        {# -- Active Mentorships Tab -- #}
+        {% if session.get('role') in ['alumni','student','admin'] %}<li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#activeMentorships"><i class="bi bi-lightning-fill me-1"></i>Active Mentorships</a></li>{% endif %}
+        {# -- Mentor Requests Tab (Mentor/Admin only) -- #}
+        {% if session.get('role') in ['alumni','admin'] and is_mentor %}<li class="nav-item"><a class="nav-link text-white" data-bs-toggle="pill" href="#mentorReqs"><i class="bi bi-inbox me-1"></i>Requests <span class="badge bg-warning text-dark ms-1">{{ mentor_requests|length }}</span></a></li>{% endif %}
+    </ul>
+    {# ==================== TAB CONTENT ==================== #}
+    <div class="tab-content">
+        {# ---- Available Mentors Tab ---- #}
+        <div class="tab-pane fade show active" id="mentors">
+            {# -- Mentor Search -- #}
+            <div class="mb-3">
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-dark border-secondary"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control bg-dark border-secondary text-white" id="mentorSearch" placeholder="Search mentors by name, department, or skills..." oninput="filterMentors()" autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('mentorSearch').value='';filterMentors();"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            {# -- Mentor Cards Grid -- #}
+            {% if mentors %}<div class="row g-3" id="mentorList">{% for m in mentors %}<div class="col-lg-4 col-md-6 mentor-card" data-name="{{ m.name|lower }}" data-dept="{{ (m.department or '')|lower }}" data-skills="{{ (m.skills or '')|lower }}"><div class="card border-0 shadow-sm h-100 mentor-card-inner"><div class="card-body text-center">
+            {# -- Avatar -- #}
+            <img src="{{ url_for('static', filename='images/default.svg') if not m.profile_pic or m.profile_pic=='default.svg' else '/uploads/'+m.profile_pic }}" class="rounded-circle mb-3 border border-secondary" width="80" height="80" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+            {# -- Name & Dept -- #}
+            <h5 class="fw-bold mb-1">
+                <a href="{{ url_for('profile.view_profile', user_id=m.id) }}" class="text-decoration-none text-white">{{ m.name }}</a>
+                {% if m.mentor_verified %}<span class="badge bg-primary bg-opacity-25 text-primary ms-1" style="font-size:0.7rem;"><i class="bi bi-patch-check-fill"></i> Verified</span>{% endif %}
+            </h5>
+            <p class="text-muted mb-1"><i class="bi bi-building me-1"></i>{{ m.department or 'N/A' }}</p>{% if m.joining_year and m.passing_year %}<p class="text-muted small"><i class="bi bi-calendar me-1"></i>Batch {{ m.joining_year }}–{{ m.passing_year }}</p>{% endif %}{% if m.company %}<p class="text-muted small"><i class="bi bi-briefcase me-1"></i>{{ m.company }}</p>{% endif %}
+            {# -- Skills -- #}
+            {% if m.skills %}<div class="mb-3 d-flex flex-wrap justify-content-center gap-1">{% for s in m.skills.split(',')[:4] %}<span class="badge bg-primary bg-opacity-25 text-primary border border-primary">{{ s.strip() }}</span>{% endfor %}</div>{% endif %}
+            {# -- Request Action -- #}
+            {% if session.get('role')=='student' %}{% set rel = mentor_status.get(m.id) %}{% if rel and rel.status == 'requested' %}<span class="badge bg-warning text-dark py-2 px-3"><i class="bi bi-clock me-1"></i>Requested</span>{% elif rel and rel.status in ['accepted','active'] %}<a href="{{ url_for('mentorship.mentorship_detail', mentorship_id=rel.id) }}" class="btn btn-success btn-sm"><i class="bi bi-link-45deg me-1"></i>Connected</a>{% elif rel and rel.status == 'completed' %}<span class="badge bg-secondary py-2 px-3"><i class="bi bi-check-lg me-1"></i>Completed</span>{% else %}<button class="btn btn-primary btn-sm" onclick="reqMentor({{ m.id }},this)"><i class="bi bi-person-plus me-1"></i>Request</button>{% endif %}{% endif %}
+        </div></div></div>{% endfor %}</div></div>{% else %}<div class="text-center py-5 text-muted"><i class="bi bi-people fs-1 d-block mb-2"></i><p>No mentors available</p></div>{% endif %}</div>
+        {# ---- My Requests Tab (Student only) ---- #}
+        {% if session.get('role')=='student' %}<div class="tab-pane fade" id="myReqs">{% if my_requests %}<div class="row g-3">{% for r in my_requests %}<div class="col-lg-6"><div class="card border-0 shadow-sm h-100 mentor-card-inner"><div class="card-body d-flex align-items-center">
+            <img src="{{ url_for('static', filename='images/default.svg') if not r.profile_pic or r.profile_pic=='default.svg' else '/uploads/'+r.profile_pic }}" class="rounded-circle me-3 border border-secondary" width="55" height="55" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+            <div class="flex-grow-1"><h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=r.mentor_id) }}" class="text-decoration-none text-white">{{ r.mentor_name }}</a></h6><small class="text-muted"><i class="bi bi-building me-1"></i>{{ r.department }}</small><br>
+                <span class="badge bg-{{ 'warning text-dark' if r.status=='requested' else 'success' if r.status in ['accepted','active'] else 'danger' }} mt-1"><i class="bi bi-{{ 'clock' if r.status=='requested' else 'link-45deg' if r.status in ['accepted','active'] else 'x-circle' }} me-1"></i>{{ 'Connected' if r.status in ['accepted','active'] else r.status|capitalize }}</span>
+                {% if r.topic %}<span class="badge bg-info bg-opacity-25 text-info border border-info ms-1">{{ r.topic }}</span>{% endif %}
+            </div>
+        </div></div></div>{% endfor %}</div>{% else %}<div class="text-center py-5 text-muted"><i class="bi bi-send fs-1 d-block mb-2"></i><p>No requests yet</p></div>{% endif %}</div>{% endif %}
+        {# ---- Active Mentorships Tab ---- #}
+        {% if session.get('role') in ['alumni','student','admin'] %}<div class="tab-pane fade" id="activeMentorships">{% if active_mentorships %}<div class="row g-3">{% for m in active_mentorships %}<div class="col-lg-6"><div class="card border-0 shadow-sm mentor-card-inner h-100"><div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <h6 class="mb-1"><i class="bi bi-person-hearts text-success me-1"></i>{{ m.topic or 'Mentorship' }}</h6>
+                    <small class="text-muted">{{ 'With ' + (m.mentee_name if session.user_id == m.mentor_id else m.mentor_name) }}</small>
+                </div>
+                <span class="badge bg-success"><i class="bi bi-link-45deg me-1"></i>Connected</span>
+            </div>
+            <div class="d-flex gap-3 mb-2">
+                <small class="text-muted"><i class="bi bi-calendar-check me-1"></i>Sessions: <strong>{{ m.session_count or 0 }}</strong></small>
+                {% if m.next_meeting %}<small class="text-info"><i class="bi bi-calendar me-1"></i>{{ m.next_meeting.strftime('%b %d, %H:%M') }}</small>{% endif %}
+            </div>
+            <a href="{{ url_for('mentorship.mentorship_detail', mentorship_id=m.id) }}" class="btn btn-sm btn-outline-success w-100"><i class="bi bi-arrow-right me-1"></i>View Details</a>
+        </div></div></div>{% endfor %}</div>{% else %}<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i><p>No active mentorships</p></div>{% endif %}</div>{% endif %}
+        {# ---- Mentor Requests Tab (Mentor/Admin only) ---- #}
+        {% if session.get('role') in ['alumni','admin'] and is_mentor %}<div class="tab-pane fade" id="mentorReqs">{% if mentor_requests %}<div class="row g-3">{% for r in mentor_requests %}<div class="col-lg-6"><div class="card border-0 shadow-sm mentor-card-inner h-100"><div class="card-body">
+            <div class="d-flex align-items-center mb-2"><img src="{{ url_for('static', filename='images/default.svg') if not r.profile_pic or r.profile_pic=='default.svg' else '/uploads/'+r.profile_pic }}" class="rounded-circle me-3 border border-secondary" width="50" height="50" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'"><div><h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=r.mentee_id) }}" class="text-decoration-none text-white">{{ r.mentee_name }}</a></h6><small class="text-muted"><i class="bi bi-building me-1"></i>{{ r.department }}</small><span class="badge bg-{{ 'warning text-dark' if r.status=='requested' else 'success' }} ms-2">{{ 'Connected' if r.status in ['accepted','active'] else r.status|capitalize }}</span></div></div>
+            {% if r.reason %}<p class="small text-muted border-start border-primary ps-3 mb-1"><strong>Reason:</strong> {{ r.reason }}</p>{% endif %}
+            {% if r.interests %}<p class="small text-muted border-start border-primary ps-3 mb-1"><strong>Interests:</strong> {{ r.interests }}</p>{% endif %}
+            {% if r.goals %}<p class="small text-muted border-start border-primary ps-3 mb-1"><strong>Goals:</strong> {{ r.goals }}</p>{% endif %}
+            {% if r.message %}<p class="small text-muted border-start border-primary ps-3 mb-2">{{ r.message }}</p>{% endif %}
+            {% if r.status=='requested' %}<div class="d-flex gap-2"><button class="btn btn-success btn-sm" onclick="respondM({{ r.id }},'accept',this)"><i class="bi bi-check-lg me-1"></i>Accept</button><button class="btn btn-outline-danger btn-sm" onclick="respondM({{ r.id }},'reject',this)"><i class="bi bi-x-lg me-1"></i>Reject</button></div>{% endif %}
+        </div></div></div>{% endfor %}</div>{% else %}<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i><p>No requests</p></div>{% endif %}</div>{% endif %}
+    </div>
+</div>
+{# ==================== REQUEST MENTORSHIP MODAL ==================== #}
+<div class="modal fade" id="mentorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>Request Mentorship</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-semibold"><i class="bi bi-question-circle me-1"></i>Why do you want this mentor?</label>
+                    <textarea class="form-control bg-dark border-secondary text-white" id="mReason" rows="2" placeholder="Explain why you want this mentor..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-semibold"><i class="bi bi-stars me-1"></i>Your Interests</label>
+                    <textarea class="form-control bg-dark border-secondary text-white" id="mInterests" rows="2" placeholder="e.g., Web Development, AI, Data Science"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-semibold"><i class="bi bi-bullseye me-1"></i>Your Goals</label>
+                    <textarea class="form-control bg-dark border-secondary text-white" id="mGoals" rows="2" placeholder="What do you hope to achieve?"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-semibold"><i class="bi bi-chat me-1"></i>Additional Message (optional)</label>
+                    <textarea class="form-control bg-dark border-secondary text-white" id="mMsg" rows="2" placeholder="Any additional message..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" id="submitM"><i class="bi bi-send me-1"></i>Send Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+{# -- Mentorship JavaScript -- #}
+<style>
+.mentor-card-inner { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.mentor-card-inner:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important; }
+.nav-tabs .nav-link { border: none; border-bottom: 2px solid transparent; color: #adb5bd !important; }
+.nav-tabs .nav-link:hover { border-bottom-color: #6c757d; color: #fff !important; }
+.nav-tabs .nav-link.active { border-bottom-color: var(--bs-primary); color: #fff !important; background: transparent; }
+</style>
+<script>
+// Activate the correct tab when arriving with a URL hash (e.g. dashboard's
+// "View Mentorships" link -> #activeMentorships)
+(function() {
+    function activateHashTab() {
+        var h = window.location.hash;
+        if (!h) return;
+        var tab = document.querySelector('.nav-tabs a[href="' + h + '"]');
+        if (!tab) return;
+        document.querySelectorAll('.nav-tabs a[data-bs-toggle="pill"]').forEach(function(t) {
+            t.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-pane').forEach(function(p) {
+            p.classList.remove('show', 'active');
+        });
+        tab.classList.add('active');
+        var pane = document.querySelector(h);
+        if (pane) pane.classList.add('show', 'active');
+    }
+    document.addEventListener('DOMContentLoaded', activateHashTab);
+    window.addEventListener('hashchange', activateHashTab);
+})();
+let curMentor=null;
+function reqMentor(id,btn){curMentor=id;const m=new bootstrap.Modal(document.getElementById('mentorModal'));m.show();const sb=document.getElementById('submitM');sb.onclick=function(){sb.disabled=true;sb.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Sending...';fetch('/api/request-mentorship',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mentor_id:curMentor,reason:document.getElementById('mReason').value,interests:document.getElementById('mInterests').value,goals:document.getElementById('mGoals').value,message:document.getElementById('mMsg').value})}).then(r=>r.json()).then(d=>{m.hide();sb.disabled=false;sb.innerHTML='<i class="bi bi-send me-1"></i>Send Request';if(d.success){btn.innerHTML='<i class="bi bi-clock me-1"></i>Requested';btn.className='btn btn-warning btn-sm';btn.disabled=true;showToast('Sent!','success');}else{showToast(d.message,'danger');}}).catch(()=>{sb.disabled=false;sb.innerHTML='<i class="bi bi-send me-1"></i>Send Request';showToast('Error sending request','danger');});};}
+function respondM(id,action,btn){if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>';}fetch('/api/respond-mentorship',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mentorship_id:id,action:action})}).then(r=>r.json()).then(d=>{if(d.success){showToast(d.message,'success');setTimeout(()=>location.reload(),1000);}else{showToast(d.message||'Error','danger');if(btn){btn.disabled=false;btn.innerHTML=action==='accept'?'<i class="bi bi-check-lg me-1"></i>Accept':'<i class="bi bi-x-lg me-1"></i>Reject';}}}).catch(()=>{if(btn){btn.disabled=false;btn.innerHTML=action==='accept'?'<i class="bi bi-check-lg me-1"></i>Accept':'<i class="bi bi-x-lg me-1"></i>Reject';}showToast('Error','danger');});}
+function filterMentors(){const q=document.getElementById('mentorSearch').value.toLowerCase();document.querySelectorAll('.mentor-card').forEach(c=>{c.style.display=c.dataset.name.includes(q)||c.dataset.dept.includes(q)||c.dataset.skills.includes(q)?'':'none';});}
+</script>
+{% endblock %}

@@ -1,0 +1,246 @@
+{#
+  Mentorship Resources page for BGSBU Interacts
+  Tabbed interface: My Resources and Public Library with resource cards
+  Includes share resource modal (alumni only) and client-side search filtering
+#}
+{% extends "base.html" %}
+{% block title %}Mentorship Resources{% endblock %}
+{% block content %}
+<style>
+.resource-card-inner { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.resource-card-inner:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important; }
+.nav-tabs .nav-link { border: none; border-bottom: 2px solid transparent; color: #adb5bd !important; }
+.nav-tabs .nav-link:hover { border-bottom-color: #6c757d; color: #fff !important; }
+.nav-tabs .nav-link.active { border-bottom-color: var(--bs-primary); color: #fff !important; background: transparent; }
+</style>
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h3 class="fw-bold mb-0"><i class="bi bi-journal-text text-primary me-2"></i>Mentorship Resources</h3>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('mentorship.mentorship_dashboard') }}" class="btn btn-outline-info btn-sm"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+            <a href="{{ url_for('mentorship.mentorship_page') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+            {% if session.role == 'alumni' %}
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#shareResourceModal"><i class="bi bi-share me-1"></i>Share</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ==================== SEARCH & TABS ==================== #}
+    <div class="mb-3">
+        <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control bg-dark border-secondary text-white" id="resourceSearch" placeholder="Search resources by title or domain..." oninput="filterResources()" autocomplete="off">
+            <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('resourceSearch').value='';filterResources();"><i class="bi bi-x-lg"></i></button>
+        </div>
+    </div>
+    <ul class="nav nav-tabs border-secondary mb-4" id="resourceTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active text-white border-primary border-bottom-0" id="my-tab" data-bs-toggle="tab" data-bs-target="#myResources" type="button" role="tab">
+                <i class="bi bi-folder me-1"></i>My Resources
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-white" id="public-tab" data-bs-toggle="tab" data-bs-target="#publicResources" type="button" role="tab">
+                <i class="bi bi-globe me-1"></i>Public Library
+            </button>
+        </li>
+    </ul>
+
+    {# ==================== TAB CONTENT ==================== #}
+    <div class="tab-content" id="resourceTabsContent">
+        {# ---- My Resources Tab ---- #}
+        <div class="tab-pane fade show active" id="myResources" role="tabpanel">
+            {% if my_resources %}
+            <div class="row g-3">
+                {% for r in my_resources %}
+                <div class="col-md-6 col-lg-4 resource-card" data-title="{{ r.title|lower }}" data-domain="{{ (r.domain or '')|lower }}">
+                    <div class="card border-0 shadow-sm h-100 resource-card-inner border-start border-{{ 'danger' if r.resource_type == 'pdf' else 'primary' if r.resource_type == 'link' else 'success' if r.resource_type == 'note' else 'warning' if r.resource_type == 'video' else 'info' }} border-3">
+                        <div class="card-body d-flex flex-column">
+                            {# -- Resource Icon & Title -- #}
+                            <div class="d-flex align-items-start mb-2">
+                                <div class="me-3 fs-2 text-{{ 'danger' if r.resource_type == 'pdf' else 'primary' if r.resource_type == 'link' else 'success' if r.resource_type == 'note' else 'warning' if r.resource_type == 'video' else 'info' }}">
+                                    {% if r.resource_type == 'pdf' %}<i class="bi bi-filetype-pdf"></i>
+                                    {% elif r.resource_type == 'link' %}<i class="bi bi-link-45deg"></i>
+                                    {% elif r.resource_type == 'note' %}<i class="bi bi-journal-text"></i>
+                                    {% elif r.resource_type == 'video' %}<i class="bi bi-play-circle"></i>
+                                    {% elif r.resource_type == 'course' %}<i class="bi bi-mortarboard"></i>
+                                    {% else %}<i class="bi bi-file-earmark"></i>{% endif %}
+                                </div>
+                                <div class="flex-grow-1 min-width-0">
+                                    <h6 class="fw-bold mb-1 text-truncate">{{ r.title }}</h6>
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <span class="badge bg-{{ 'danger' if r.resource_type == 'pdf' else 'primary' if r.resource_type == 'link' else 'success' if r.resource_type == 'note' else 'warning' if r.resource_type == 'video' else 'info' }}" style="font-size:0.6rem;">{{ r.resource_type|capitalize }}</span>
+                                        {% if r.domain %}<span class="badge bg-secondary" style="font-size:0.6rem;">{{ r.domain }}</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {# -- Description -- #}
+                            {% if r.description %}
+                            <p class="text-muted small mb-2 flex-grow-1">{{ r.description[:120] }}{% if r.description|length > 120 %}...{% endif %}</p>
+                            {% endif %}
+                            {# -- Card Footer -- #}
+                            <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top border-secondary">
+                                <small class="text-muted"><i class="bi bi-person me-1"></i>{{ r.mentor_name }}</small>
+                                {% if r.url %}
+                                <a href="{{ r.url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right me-1"></i>Open</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            {# -- Empty State -- #}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-folder-open fs-1 d-block mb-2"></i>
+                <p>No resources shared yet</p>
+                {% if session.role == 'alumni' %}
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#shareResourceModal"><i class="bi bi-share me-1"></i>Share your first resource</button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {# ---- Public Resources Tab ---- #}
+        <div class="tab-pane fade" id="publicResources" role="tabpanel">
+            {% if public_resources %}
+            <div class="row g-3">
+                {% for r in public_resources %}
+                <div class="col-md-6 col-lg-4 resource-card" data-title="{{ r.title|lower }}" data-domain="{{ (r.domain or '')|lower }}">
+                    <div class="card border-0 shadow-sm h-100 resource-card-inner border-start border-{{ 'danger' if r.resource_type == 'pdf' else 'primary' if r.resource_type == 'link' else 'success' if r.resource_type == 'note' else 'warning' if r.resource_type == 'video' else 'info' }} border-3">
+                        <div class="card-body d-flex flex-column">
+                            {# -- Resource Icon & Title -- #}
+                            <div class="d-flex align-items-start mb-2">
+                                <div class="me-3 fs-2 text-{{ 'danger' if r.resource_type == 'pdf' else 'primary' if r.resource_type == 'link' else 'success' if r.resource_type == 'note' else 'warning' if r.resource_type == 'video' else 'info' }}">
+                                    {% if r.resource_type == 'pdf' %}<i class="bi bi-filetype-pdf"></i>
+                                    {% elif r.resource_type == 'link' %}<i class="bi bi-link-45deg"></i>
+                                    {% elif r.resource_type == 'note' %}<i class="bi bi-journal-text"></i>
+                                    {% elif r.resource_type == 'video' %}<i class="bi bi-play-circle"></i>
+                                    {% elif r.resource_type == 'course' %}<i class="bi bi-mortarboard"></i>
+                                    {% else %}<i class="bi bi-file-earmark"></i>{% endif %}
+                                </div>
+                                <div class="flex-grow-1 min-width-0">
+                                    <h6 class="fw-bold mb-1 text-truncate">{{ r.title }}</h6>
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <span class="badge bg-{{ 'danger' if r.resource_type == 'pdf' else 'primary' if r.resource_type == 'link' else 'success' if r.resource_type == 'note' else 'warning' if r.resource_type == 'video' else 'info' }}" style="font-size:0.6rem;">{{ r.resource_type|capitalize }}</span>
+                                        {% if r.domain %}<span class="badge bg-secondary" style="font-size:0.6rem;">{{ r.domain }}</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {# -- Description -- #}
+                            {% if r.description %}
+                            <p class="text-muted small mb-2 flex-grow-1">{{ r.description[:120] }}{% if r.description|length > 120 %}...{% endif %}</p>
+                            {% endif %}
+                            {# -- Card Footer -- #}
+                            <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top border-secondary">
+                                <small class="text-muted"><i class="bi bi-person me-1"></i>{{ r.mentor_name }}</small>
+                                {% if r.url %}
+                                <a href="{{ r.url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right me-1"></i>Open</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            {# -- Empty State -- #}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-globe2 fs-1 d-block mb-2"></i>
+                <p>No public resources available</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ==================== SHARE RESOURCE MODAL (Alumni only) ==================== #}
+{% if session.role == 'alumni' %}
+<div class="modal fade" id="shareResourceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-share text-primary me-2"></i>Share Resource</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="resTitle" placeholder="Resource title">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-journal-text me-1"></i>Description</label>
+                    <textarea class="form-control bg-secondary text-white border-secondary" id="resDescription" rows="2" placeholder="Brief description"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-tag me-1"></i>Type</label>
+                    <select class="form-select bg-secondary text-white border-secondary" id="resType">
+                        <option value="link">Link</option>
+                        <option value="pdf">PDF</option>
+                        <option value="note">Note</option>
+                        <option value="video">Video</option>
+                        <option value="course">Course</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-link-45deg me-1"></i>URL</label>
+                    <input type="url" class="form-control bg-secondary text-white border-secondary" id="resUrl" placeholder="https://...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-globe me-1"></i>Domain</label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary" id="resDomain" placeholder="e.g., Web Development, AI, Machine Learning">
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="resPublic">
+                    <label class="form-check-label small" for="resPublic"><i class="bi bi-unlock me-1"></i>Make public (visible to all students)</label>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="shareResBtn" onclick="shareResource()"><i class="bi bi-cloud-upload me-1"></i>Share</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# -- Share Resource JavaScript -- #}
+<script>
+function shareResource() {
+    const title = document.getElementById('resTitle').value.trim();
+    if (!title) { showToast('Title is required', 'warning'); return; }
+    const btn = document.getElementById('shareResBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sharing...';
+    fetch('/api/mentorship/resources/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: title, description: document.getElementById('resDescription').value.trim(),
+            resource_type: document.getElementById('resType').value,
+            url: document.getElementById('resUrl').value.trim(),
+            domain: document.getElementById('resDomain').value.trim(),
+            is_public: document.getElementById('resPublic').checked
+        })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Share';
+        if (d.success) { showToast(d.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('shareResourceModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else { showToast(d.message || 'Error sharing resource', 'danger'); }
+    }).catch(e => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Share'; showToast('Error: ' + e.message, 'danger'); });
+}
+</script>
+{% endif %}
+{# -- Resource Search Filter JavaScript -- #}
+<script>
+function filterResources() {
+    const q = document.getElementById('resourceSearch').value.toLowerCase();
+    document.querySelectorAll('.resource-card').forEach(c => {
+        const title = c.dataset.title || '';
+        const domain = c.dataset.domain || '';
+        c.style.display = title.includes(q) || domain.includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

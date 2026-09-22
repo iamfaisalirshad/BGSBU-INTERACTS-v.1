@@ -1,0 +1,140 @@
+{# =============================================================================
+   Mentorship Management - Admin overview of all mentorships with status
+   filtering, session counts, ratings, and inline accept/reject/complete actions.
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}Admin - Mentorship Management{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0"><i class="bi bi-person-hearts text-primary me-2"></i>Mentorship Management</h3>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    {# ==================== MENTORSHIP LIST ==================== #}
+    <div class="card border-0 shadow-sm">
+        {# -- Status filter and table header -- #}
+        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">All Mentorships</h5>
+            <select class="form-select form-select-sm" id="statusFilter" style="width: auto;" onchange="filterStatus()">
+                <option value="">All Status</option>
+                <option value="requested">Requested</option>
+                <option value="accepted">Accepted</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+        <div class="card-body p-0">
+            {% if mentorships %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Mentor</th>
+                                <th>Mentee</th>
+                                <th>Status</th>
+                                <th>Topic</th>
+                                <th>Sessions</th>
+                                <th>Avg Rating</th>
+                                <th>Since</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in mentorships %}
+                            <tr id="mentorship-{{ m.id }}" class="mentorship-row" data-status="{{ m.status }}">
+                                <td>#{{ m.id }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="{{ url_for('static', filename='images/default.svg') if not m.mentor_pic or m.mentor_pic=='default.svg' else '/uploads/'+m.mentor_pic }}" class="rounded-circle" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                        <a href="{{ url_for('profile.view_profile', user_id=m.mentor_id) }}" class="text-decoration-none text-white">{{ m.mentor_name }}</a>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="{{ url_for('static', filename='images/default.svg') if not m.mentee_pic or m.mentee_pic=='default.svg' else '/uploads/'+m.mentee_pic }}" class="rounded-circle" width="32" height="32" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                        <a href="{{ url_for('profile.view_profile', user_id=m.mentee_id) }}" class="text-decoration-none text-white">{{ m.mentee_name }}</a>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'warning text-dark' if m.status=='requested' else 'info' if m.status=='accepted' else 'success' if m.status=='active' else 'secondary' if m.status=='completed' else 'danger' }}">{{ m.status|capitalize }}</span>
+                                </td>
+                                <td>
+                                    <small>{{ m.topic or 'General' }}</small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary bg-opacity-50">{{ m.session_count or 0 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if m.avg_rating %}
+                                        <small><i class="bi bi-star-fill text-warning"></i> {{ "%.1f"|format(m.avg_rating) }}/5</small>
+                                    {% else %}
+                                        <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ m.created_at.strftime('%b %d, %Y') if m.created_at else '-' }}</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info" onclick="window.location.href='{{ url_for('admin.admin_view_mentorship', mentorship_id=m.id) }}'"><i class="bi bi-eye"></i></button>
+                                    {% if m.status == 'requested' %}
+                                        <button class="btn btn-sm btn-success" onclick="mentorshipAction({{ m.id }}, 'accept')"><i class="bi bi-check-lg"></i></button>
+                                        <button class="btn btn-sm btn-danger" onclick="mentorshipAction({{ m.id }}, 'reject')"><i class="bi bi-x-lg"></i></button>
+                                    {% elif m.status == 'active' %}
+                                        <button class="btn btn-sm btn-warning" onclick="mentorshipAction({{ m.id }}, 'complete')"><i class="bi bi-check-circle"></i></button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <p><i class="bi bi-inbox fs-3 d-block mb-2"></i>No mentorships found</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# -- Mentorship filter and action scripts -- #}
+<script>
+function filterStatus() {
+    const status = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('.mentorship-row');
+    rows.forEach(row => {
+        if (status === '' || row.getAttribute('data-status') === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function mentorshipAction(mentorshipId, action) {
+    customConfirm(`${action.charAt(0).toUpperCase() + action.slice(1)} this mentorship?`,function(confirmed){
+    if(!confirmed) return;
+    
+    fetch('/api/admin/mentorship-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mentorship_id: mentorshipId, action: action })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            showToast(d.message || 'Action completed', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(d.message || 'Action failed', 'danger');
+        }
+    })
+    .catch(e => showToast('Error: ' + e.message, 'danger'));
+    });
+}
+</script>
+{% endblock %}

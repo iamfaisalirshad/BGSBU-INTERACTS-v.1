@@ -1,0 +1,44 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Uploads (user data)
+src/uploads/*
+!src/uploads/.gitkeep
+
+# Database dumps with real data
+*.sql
+!bgsbu_interacts_demo.sql
+
+# Logs
+*.log
+
+# Never publish credentials or local backups
+passwords.md
+
+# Large archives
+*.zip
+
+# Nested duplicate copy of the project
+/BGSBU_INTERACTS_SHAREABLE/

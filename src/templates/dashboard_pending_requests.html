@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Pending Requests - Dashboard{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-person-plus text-warning me-2"></i>Pending Connection Requests</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> pending requests</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    {% if requests %}
+    <div class="row g-3 mb-4">
+        {% for req in requests %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100 border-start border-warning border-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not req.profile_pic else '/uploads/'+req.profile_pic }}" 
+                             class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" 
+                             onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div class="flex-grow-1">
+                            <h6 class="fw-semibold mb-0">
+                                <a href="{{ url_for('profile.view_profile', user_id=req.user_id) }}" class="text-decoration-none text-white">
+                                    {{ req.name }}
+                                </a>
+                            </h6>
+                            <small class="text-muted d-block">{{ req.email }}</small>
+                            {% if req.department %}<small class="text-muted d-block">{{ req.department }}</small>{% endif %}
+                            <small class="text-muted d-block mt-1"><i class="bi bi-calendar me-1"></i>Requested {{ req.created_at.strftime('%b %d, %Y') if req.created_at else 'Recently' }}</small>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-success" onclick="acceptRequest({{ req.id }}, this)"><i class="bi bi-check me-1"></i>Accept</button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="rejectRequest({{ req.id }}, this)"><i class="bi bi-x me-1"></i>Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_pending_requests', page=1) }}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_pending_requests', page=page-1) }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_pending_requests', page=p) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_pending_requests', page=page+1) }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_pending_requests', page=total_pages) }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-person-plus display-4 d-block mb-3"></i>
+            <p>No pending connection requests</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script>
+function acceptRequest(connId, btn){
+    fetch('/api/respond-request', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({connection_id: connId, action: 'accept'})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            btn.closest('.col-lg-4').remove();
+            showToast('Request accepted', 'success');
+        } else {
+            showToast(d.message, 'danger');
+        }
+    });
+}
+function rejectRequest(connId, btn){
+    customConfirm('Reject this request?',function(confirmed){
+    if(!confirmed) return;
+    fetch('/api/respond-request', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({connection_id: connId, action: 'reject'})
+    }).then(r => r.json()).then(d => {
+        if(d.success){
+            btn.closest('.col-lg-4').remove();
+            showToast('Request rejected', 'success');
+        } else {
+            showToast(d.message, 'danger');
+        }
+    });
+    });
+}
+</script>
+{% endblock %}

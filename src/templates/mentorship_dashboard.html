@@ -1,0 +1,285 @@
+{#
+  Mentorship Dashboard for BGSBU Interacts
+  Overview of active mentorships, progress analytics, and quick action links
+  Shows stats cards, active mentorship list with progress bars, and navigation shortcuts
+#}
+{% extends "base.html" %}
+{% block title %}Mentorship Dashboard{% endblock %}
+{% block content %}
+<style>
+.dash-stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.dash-stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important; }
+.action-card { transition: all 0.25s ease; cursor: pointer; }
+.action-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 12px 30px rgba(0,0,0,0.3) !important; }
+.action-card .action-icon { transition: transform 0.3s ease; }
+.action-card:hover .action-icon { transform: scale(1.15); }
+</style>
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h3 class="fw-bold mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i>Mentorship Dashboard</h3>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('mentorship.mentorship_page') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-people me-1"></i>Mentorship</a>
+            <a href="{{ url_for('mentorship.mentorship_groups') }}" class="btn btn-outline-info btn-sm"><i class="bi bi-people-fill me-1"></i>Groups</a>
+            <a href="{{ url_for('mentorship.mentorship_resources') }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-journal-text me-1"></i>Resources</a>
+        </div>
+    </div>
+
+    {# ==================== STATS CARDS ==================== #}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <a href="{{ url_for('mentorship.mentorship_page') }}#activeMentorships" class="card border-0 shadow-sm border-start border-primary border-3 h-100 dash-stat-card text-decoration-none text-reset">
+                <div class="card-body d-flex align-items-center">
+                    <div class="fs-1 text-primary me-3"><i class="bi bi-people"></i></div>
+                    <div>
+                        <h4 class="fw-bold mb-0">{{ active_mentorships|length }}</h4>
+                        <small class="text-muted">Active Mentorships</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('mentorship.mentorship_groups') }}" class="card border-0 shadow-sm border-start border-success border-3 h-100 dash-stat-card text-decoration-none text-reset">
+                <div class="card-body d-flex align-items-center">
+                    <div class="fs-1 text-success me-3"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <h4 class="fw-bold mb-0">{{ group_count }}</h4>
+                        <small class="text-muted">Groups Joined</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('mentorship.mentorship_resources') }}" class="card border-0 shadow-sm border-start border-warning border-3 h-100 dash-stat-card text-decoration-none text-reset">
+                <div class="card-body d-flex align-items-center">
+                    <div class="fs-1 text-warning me-3"><i class="bi bi-journal-text"></i></div>
+                    <div>
+                        <h4 class="fw-bold mb-0">{{ resource_count }}</h4>
+                        <small class="text-muted">Resources Shared</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('mentorship.mentorship_page') }}#activeMentorships" class="card border-0 shadow-sm border-start border-info border-3 h-100 dash-stat-card text-decoration-none text-reset">
+                <div class="card-body d-flex align-items-center">
+                    <div class="fs-1 text-info me-3"><i class="bi bi-calendar-check"></i></div>
+                    <div>
+                        <h4 class="fw-bold mb-0">{{ total_sessions }}</h4>
+                        <small class="text-muted">Total Sessions</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    {# ==================== ACTIVE MENTORSHIPS ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-lightning-fill text-primary me-2"></i>Active Mentorships</h5>
+        </div>
+        <div class="card-body">
+            {% if active_mentorships %}
+            <div class="row g-3">
+                {% for m in active_mentorships %}
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <img src="{{ url_for('static', filename='images/default.svg') if not (m.mentor_pic if session.user_id == m.mentee_id else m.mentee_pic) or (m.mentor_pic if session.user_id == m.mentee_id else m.mentee_pic)=='default.svg' else '/uploads/'+(m.mentor_pic if session.user_id == m.mentee_id else m.mentee_pic) }}" class="rounded-circle border border-secondary" width="48" height="48" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                <div class="flex-grow-1 min-width-0">
+                                    <h6 class="fw-bold mb-1">
+                                        {% if session.user_id == m.mentor_id %}
+                                            {{ m.mentee_name }}
+                                        {% else %}
+                                            {{ m.mentor_name }}
+                                            {% if m.mentor_verified %}<span class="badge bg-primary bg-opacity-25 text-primary" style="font-size:0.65rem"><i class="bi bi-patch-check-fill"></i> Verified</span>{% endif %}
+                                        {% endif %}
+                                    </h6>
+                                    <small class="text-muted"><i class="bi bi-calendar-check me-1"></i>{{ m.session_count }} session(s) · Tasks: {{ m.task_count }}/{{ m.total_tasks }}</small>
+                                </div>
+                                <a href="{{ url_for('mentorship.mentorship_detail', mentorship_id=m.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-right"></i></a>
+                            </div>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-9">
+                                    <div class="progress" style="height:8px">
+                                        <div class="progress-bar bg-{{ 'success' if m.progress_pct >= 75 else 'warning' if m.progress_pct >= 50 else 'info' if m.progress_pct >= 25 else 'secondary' }}" role="progressbar" style="width:{{ m.progress_pct }}%" aria-valuenow="{{ m.progress_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                <div class="col-3 text-end">
+                                    <small class="text-muted">{{ m.progress_pct }}%</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                <p>No active mentorships yet</p>
+                <a href="{{ url_for('mentorship.mentorship_page') }}" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Browse Mentors</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ==================== PROGRESS ANALYTICS ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow text-info me-2"></i>Progress Analytics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3 col-6">
+                    <div class="text-center p-3">
+                        <div class="fs-3 fw-bold text-info mb-1">{{ overall_progress_pct }}%</div>
+                        <small class="text-muted d-block">{{ overall_done }}/{{ overall_total }} tasks</small>
+                        <small class="text-muted">Completion Rate</small>
+                        <div class="progress mt-2" style="height:6px">
+                            <div class="progress-bar bg-info" role="progressbar" style="width:{{ overall_progress_pct }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="text-center p-3">
+                        <div class="fs-3 fw-bold text-success mb-1">{{ completed_goal_count }}/{{ goal_count }}</div>
+                        <small class="text-muted">Goals Completed</small>
+                        <div class="progress mt-2" style="height:6px">
+                            <div class="progress-bar bg-success" role="progressbar" style="width:{{ (completed_goal_count / goal_count * 100) if goal_count > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="text-center p-3">
+                        <div class="fs-3 fw-bold text-warning mb-1">{{ total_sessions }}</div>
+                        <small class="text-muted">Total Sessions</small>
+                        <div class="mt-2"><i class="bi bi-calendar-check fs-3 text-warning"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="text-center p-3">
+                        <div class="fs-3 fw-bold text-primary mb-1">{{ goal_count }}</div>
+                        <small class="text-muted">Total Goals Set</small>
+                        <div class="mt-2"><i class="bi bi-bullseye fs-3 text-primary"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== QUICK ACTIONS ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-lightning text-warning me-2"></i>Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{{ url_for('mentorship.mentorship_page') }}" class="text-decoration-none">
+                        <div class="card bg-dark border-primary border-opacity-25 h-100 text-center p-3 action-card">
+                            <div class="fs-1 text-primary mb-2 action-icon"><i class="bi bi-search"></i></div>
+                            <h6 class="fw-bold mb-1">Browse Mentors</h6>
+                            <small class="text-muted">Find and connect with mentors</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('mentorship.mentorship_resources') }}" class="text-decoration-none">
+                        <div class="card bg-dark border-success border-opacity-25 h-100 text-center p-3 action-card">
+                            <div class="fs-1 text-success mb-2 action-icon"><i class="bi bi-journal-text"></i></div>
+                            <h6 class="fw-bold mb-1">Resources</h6>
+                            <small class="text-muted">Access shared learning materials</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('mentorship.mentorship_groups') }}" class="text-decoration-none">
+                        <div class="card bg-dark border-info border-opacity-25 h-100 text-center p-3 action-card">
+                            <div class="fs-1 text-info mb-2 action-icon"><i class="bi bi-people"></i></div>
+                            <h6 class="fw-bold mb-1">My Groups</h6>
+                            <small class="text-muted">Manage your mentorship groups</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('mentorship.mentorship_page') }}#activeMentorships" class="text-decoration-none">
+                        <div class="card bg-dark border-warning border-opacity-25 h-100 text-center p-3 action-card">
+                            <div class="fs-1 text-warning mb-2 action-icon"><i class="bi bi-calendar-plus"></i></div>
+                            <h6 class="fw-bold mb-1">View Mentorships</h6>
+                            <small class="text-muted">Check your active mentorships</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== RECENT ACTIVITY ==================== #}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-activity text-success me-2"></i>Recent Activity</h5>
+        </div>
+        <div class="card-body">
+            {% set has_activity = active_mentorships|length > 0 or group_count > 0 %}
+            {% if has_activity %}
+            <div class="row g-3">
+                {% if active_mentorships %}
+                <div class="col-md-6">
+                    <div class="p-3 bg-dark rounded border border-secondary">
+                        <h6 class="fw-bold small text-primary mb-2"><i class="bi bi-lightning-fill me-1"></i>Latest Mentorships</h6>
+                        {% for m in active_mentorships[:3] %}
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="bg-primary bg-opacity-10 rounded p-1">
+                                <i class="bi bi-person-hearts text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1 min-width-0">
+                                <small class="d-block text-truncate fw-bold">{{ m.topic or 'Mentorship' }}</small>
+                                <small class="text-muted">{{ m.session_count }} session(s)</small>
+                            </div>
+                            <a href="{{ url_for('mentorship.mentorship_detail', mentorship_id=m.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-right"></i></a>
+                        </div>
+                        {% if not loop.last %}<hr class="border-secondary my-1">{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-md-6">
+                    <div class="p-3 bg-dark rounded border border-secondary">
+                        <h6 class="fw-bold small text-success mb-2"><i class="bi bi-graph-up me-1"></i>Quick Stats</h6>
+                        <div class="row g-2 text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-success">{{ overall_progress_pct }}%</div>
+                                <small class="text-muted" style="font-size:0.65rem;">Task Completion</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-info">{{ active_mentorships|length }}</div>
+                                <small class="text-muted" style="font-size:0.65rem;">Active</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-warning">{{ group_count }}</div>
+                                <small class="text-muted" style="font-size:0.65rem;">Groups</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-primary">{{ total_sessions }}</div>
+                                <small class="text-muted" style="font-size:0.65rem;">Sessions</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-clock-history fs-1 d-block mb-2"></i>
+                <p>No recent activity. Start by browsing mentors or joining a group!</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="{{ url_for('mentorship.mentorship_page') }}" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Browse Mentors</a>
+                    <a href="{{ url_for('mentorship.mentorship_groups') }}" class="btn btn-outline-info btn-sm"><i class="bi bi-people me-1"></i>Browse Groups</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

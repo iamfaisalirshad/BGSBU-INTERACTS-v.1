@@ -1,0 +1,309 @@
+{# ============================================================ #}
+{# Landing / homepage template — standalone (no base.html)      #}
+{# so it renders identically for authenticated & guest users.   #}
+{# ============================================================ #}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - BGSBU Interacts - Alumni Connection Platform</title>
+    <link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendor/bootstrap-icons/css/bootstrap-icons.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container mt-3">{% for category, message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}</div>{% endif %}{% endwith %}
+<div style="min-height: 100vh; background: linear-gradient(rgba(10, 23, 54, 0.75), rgba(10, 23, 54, 0.88)), url('{{ url_for('static', filename='images/bg.jpg') }}') center/cover fixed no-repeat;">
+    {# ==================== NAVBAR ==================== #}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent">
+        <div class="container-xl">
+            <a class="navbar-brand fw-bold fs-4" href="{{ url_for('home') }}">
+                <i class="bi bi-graph-up-arrow text-warning me-2"></i>BGSBU Interacts
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center gap-2">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.login') }}?role=admin">Admin Login</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    {# ==================== HERO SECTION ==================== #}
+    <section class="py-5 py-lg-6 text-white text-center">
+        <div class="container-xl">
+            <div class="text-center mb-4">
+                <h1 class="display-1 fw-bolder mb-3">BGSBU <span class="text-warning">Interacts</span></h1>
+                <h2 class="h4 fw-semibold text-white-75 mb-3">Baba Ghulam Shah Badshah University Official Alumni & Student Network</h2>
+                <p class="lead mb-5 col-lg-8 mx-auto">
+                    Bring together students and alumni on one secure platform for mentorship, jobs, connections, and campus career growth.
+                </p>
+                <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+                    <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#platformInfoModal">Platform Info</button>
+                    <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#universityInfoModal">University Info</button>
+                    <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#developerInfoModal">Developer Details</button>
+                </div>
+            </div>
+            
+            {# -- User Type Selection Cards -- #}
+            <div class="row g-4 mb-5 justify-content-center">
+                {# -- Student Card -- #}
+                <div class="col-md-5 col-lg-4">
+                    <div class="card bg-white bg-opacity-10 border-light backdrop-blur shadow-lg h-100 transition-all" style="backdrop-filter: blur(10px);">
+                        <div class="card-body text-white p-4">
+                            <i class="bi bi-mortarboard display-4 text-info mb-3"></i>
+                            <h4 class="fw-bold mb-3">Students</h4>
+                            <p class="small mb-4">Connect with alumni, find mentors, explore job opportunities, and grow your network.</p>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('auth.login') }}?role=student" class="btn btn-info btn-sm fw-semibold">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Student Login
+                                </a>
+                                <a href="{{ url_for('auth.register') }}?role=student" class="btn btn-outline-light btn-sm fw-semibold">
+                                    <i class="bi bi-person-plus me-2"></i>Register as Student
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# -- Alumni Card -- #}
+                <div class="col-md-5 col-lg-4">
+                    <div class="card bg-white bg-opacity-10 border-light backdrop-blur shadow-lg h-100 transition-all" style="backdrop-filter: blur(10px);">
+                        <div class="card-body text-white p-4">
+                            <i class="bi bi-briefcase display-4 text-success mb-3"></i>
+                            <h4 class="fw-bold mb-3">Alumni</h4>
+                            <p class="small mb-4">Post jobs, mentor students, reconnect with classmates, and give back to the community.</p>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('auth.login') }}?role=alumni" class="btn btn-success btn-sm fw-semibold">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Alumni Login
+                                </a>
+                                <a href="{{ url_for('auth.register') }}?role=alumni" class="btn btn-outline-light btn-sm fw-semibold">
+                                    <i class="bi bi-person-plus me-2"></i>Register as Alumni
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ==================== FEATURES SECTION ==================== #}
+    <section id="features" class="py-5 bg-dark">
+        <div class="container-xl text-white">
+            <h2 class="text-center fw-bold mb-5 display-5">Platform Features</h2>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="text-center">
+                        <i class="bi bi-people-fill display-4 text-primary mb-3"></i>
+                        <h5 class="fw-bold">Smart Connections</h5>
+                        <p class="text-muted small">Find and connect with alumni and peers based on interests, departments, and career goals.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="text-center">
+                        <i class="bi bi-briefcase-fill display-4 text-success mb-3"></i>
+                        <h5 class="fw-bold">Job Portal</h5>
+                        <p class="text-muted small">Access exclusive job postings, internships, and career opportunities from alumni companies.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="text-center">
+                        <i class="bi bi-star-fill display-4 text-warning mb-3"></i>
+                        <h5 class="fw-bold">Mentorship</h5>
+                        <p class="text-muted small">Get guidance from experienced alumni mentors to accelerate your career growth.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="text-center">
+                        <i class="bi bi-chat-dots-fill display-4 text-info mb-3"></i>
+                        <h5 class="fw-bold">Direct Messaging</h5>
+                        <p class="text-muted small">Chat directly with connections, discuss opportunities, and build relationships.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="text-center">
+                        <i class="bi bi-shield-check-fill display-4 text-danger mb-3"></i>
+                        <h5 class="fw-bold">Secure & Verified</h5>
+                        <p class="text-muted small">All users are verified through email, ensuring authenticity and safety.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="text-center">
+                        <i class="bi bi-graph-up-fill display-4 text-success mb-3"></i>
+                        <h5 class="fw-bold">Career Growth</h5>
+                        <p class="text-muted small">Track your professional network growth and career milestones in one place.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ==================== ABOUT SECTION ==================== #}
+    <section id="about" class="py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="container-xl text-white text-center">
+            <h2 class="fw-bold mb-4 display-5">About BGSBU Interacts</h2>
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <p class="lead mb-4">
+                        BGSBU Interacts is the official alumni networking platform for Baba Ghulam Shah Badshah University. Our mission is to foster lifelong connections between students and alumni, creating a supportive community that helps members succeed in their careers and personal growth.
+                    </p>
+                    <div class="row g-4 mt-4">
+                        <div class="col-sm-4">
+                            <h5 class="fw-bold">500+</h5>
+                            <p class="text-muted small">Active Users</p>
+                        </div>
+                        <div class="col-sm-4">
+                            <h5 class="fw-bold">100+</h5>
+                            <p class="text-muted small">Job Postings</p>
+                        </div>
+                        <div class="col-sm-4">
+                            <h5 class="fw-bold">50+</h5>
+                            <p class="text-muted small">Mentors</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ==================== MODALS ==================== #}
+    {# -- Platform Info Modal -- #}
+    <div class="modal fade" id="platformInfoModal" tabindex="-1" aria-labelledby="platformInfoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="platformInfoLabel">Platform Information</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>BGSBU Interacts is designed to connect current students and alumni while promoting mentorship, collaboration, career guidance, and professional networking within the university community.</p>
+                    <ul>
+                        <li>Student and alumni networking</li>
+                        <li>Professional mentorship and guidance</li>
+                        <li>Real-time messaging and file sharing</li>
+                        <li>Career support and resource sharing</li>
+                        <li>Group discussions and mentorship sessions</li>
+                        <li>Secure authentication and admin controls</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# -- University Info Modal -- #}
+    <div class="modal fade" id="universityInfoModal" tabindex="-1" aria-labelledby="universityInfoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="universityInfoLabel">Baba Ghulam Shah Badshah University</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Baba Ghulam Shah Badshah University is a prestigious higher educational institution located in Rajouri, Jammu & Kashmir, dedicated to academic excellence, innovation, research, and holistic student development. The university offers quality education across multiple disciplines while fostering professionalism, leadership, creativity, and social responsibility. With a strong commitment to learning, skill development, and career growth, BGSBU continues to empower students with the knowledge, confidence, and opportunities needed to excel in the modern world and contribute meaningfully to society.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# -- Developer Info Modal -- #}
+    <div class="modal fade" id="developerInfoModal" tabindex="-1" aria-labelledby="developerInfoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold" id="developerInfoLabel"><i class="bi bi-code-slash text-warning me-2"></i>About This Project</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">This project was developed as a Minor Project by a team of students from the Department of Computer Science & Engineering, COET, for Baba Ghulam Shah Badshah University, with the objective of creating a modern and professional Student–Alumni Ecosystem.</p>
+                    <p class="mb-0 text-muted small">Contact the project owner for inquiries regarding this project.</p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== FOOTER ==================== #}
+    <footer class="bg-dark text-white py-4 border-top border-secondary">
+        <div class="container-xl">
+            <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <h6 class="fw-bold mb-2">BGSBU Interacts</h6>
+                    <p class="text-muted small">Connecting students and alumni for a brighter future.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="text-muted small mb-0">&copy; 2024 BGSBU Interacts. All rights reserved.</p>
+                    <p class="text-muted small">
+                        <a href="{{ url_for('auth.login') }}" class="text-muted text-decoration-none">Login</a> |
+                        <a href="{{ url_for('auth.register') }}" class="text-muted text-decoration-none">Register</a> |
+                        <a href="{{ url_for('auth.login') }}?role=admin" class="text-muted text-decoration-none">Admin</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<style>
+.transition-all {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px);
+    border-color: rgba(102, 126, 234, 0.4) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+    .display-3 {
+        font-size: 2rem;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .display-5 {
+        font-size: 1.5rem;
+    }
+}
+</style>
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

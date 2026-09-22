@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Applications - {{ job.title }}{% endblock %}
+{% block content %}
+<div class="py-4">
+    <a href="{{ url_for('jobs.my_postings') }}" class="btn btn-outline-secondary btn-sm mb-2"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <h3 class="fw-bold">Applications: {{ job.title }}</h3><p class="text-muted">{{ applications|length }} applications</p>
+    {% if applications %}<div class="row g-3">{% for a in applications %}<div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+        <div class="d-flex align-items-start mb-3">
+            <img src="{{ url_for('static', filename='images/default.svg') if not a.profile_pic or a.profile_pic=='default.svg' else '/uploads/'+(a.profile_pic or 'default.svg') }}" class="rounded-circle me-3" width="50" height="50" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+            <div class="flex-grow-1"><h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=a.user_id) }}" class="text-decoration-none text-white">{{ a.name }}</a></h6><small class="text-muted">{{ a.department }} • {{ a.email }}</small></div>
+            <span class="badge bg-{{ 'warning text-dark' if a.status=='pending' else 'success' if a.status=='accepted' else 'danger' }}">{{ a.status|capitalize }}</span>
+        </div>
+        {% if a.cover_letter %}<p class="small text-muted border-start border-primary ps-3 mb-3">{{ a.cover_letter[:200] }}</p>{% endif %}
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info" onclick="updateApp({{ a.id }},'reviewed')">Reviewed</button>
+            <button class="btn btn-sm btn-outline-success" onclick="updateApp({{ a.id }},'accepted')">Accept</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="updateApp({{ a.id }},'rejected')">Reject</button>
+        </div>
+    </div></div></div>{% endfor %}</div>{% else %}<div class="text-center py-5 text-muted"><p>No applications</p></div>{% endif %}
+</div>
+<script>function updateApp(id,status){fetch('/api/update-application',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({application_id:id,status:status})}).then(r=>r.json()).then(d=>{if(d.success){showToast('Updated','success');setTimeout(()=>location.reload(),1000);}});}</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{# ============================================================ #}
+{# Template: dashboard_all_users_view.html                     #}
+{# Description: Lists all active users (students and alumni)   #}
+{#   with search and role filtering.                           #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}All Users - Dashboard{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-people text-primary me-2"></i>All Users</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> registered users</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    {# ==================== SEARCH & FILTER ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form id="filterForm" method="GET" class="row g-2">
+                <div class="col-md-8">
+                    <input type="text" name="search" class="form-control bg-dark border-secondary text-white" placeholder="Search by name, email, department, roll number..." value="{{ search }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="btn-group w-100" role="group" aria-label="role filter">
+                        <button type="button" class="btn btn-outline-secondary {% if not role_filter %}active{% endif %}" data-role-val="">All Roles</button>
+                        <button type="button" class="btn btn-outline-secondary {% if role_filter == 'student' %}active{% endif %}" data-role-val="student">Students</button>
+                        <button type="button" class="btn btn-outline-secondary {% if role_filter == 'alumni' %}active{% endif %}" data-role-val="alumni">Alumni</button>
+                    </div>
+                    <input type="hidden" name="role" id="roleInput" value="{{ role_filter }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.querySelectorAll('#filterForm .btn-group button').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            document.querySelectorAll('#filterForm .btn-group button').forEach(b=>b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('roleInput').value = this.dataset.roleVal;
+            document.getElementById('filterForm').submit();
+        });
+    });
+    </script>
+
+    {# ==================== USERS LIST ==================== #}
+    {% if users %}
+    <div class="row g-3 mb-4">
+        {% for user in users %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not user.profile_pic else '/uploads/'+user.profile_pic }}" 
+                             class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" 
+                             onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div class="flex-grow-1">
+                            <h6 class="fw-semibold mb-0">
+                                <a href="{{ url_for('profile.view_profile', user_id=user.id) }}" class="text-decoration-none text-white">
+                                    {{ user.name }}
+                                </a>
+                            </h6>
+                            <small class="text-muted d-block">{{ user.email }}</small>
+                            <span class="badge bg-{{ 'info' if user.role=='student' else 'success' }} mt-1" style="font-size:0.7rem;">{{ user.role|capitalize }}</span>
+                            {% if user.department %}<small class="text-muted d-block"><i class="bi bi-building me-1"></i>{{ user.department }}</small>{% endif %}
+                            {% if user.roll_number %}<small class="text-muted d-block"><i class="bi bi-person-badge me-1"></i>Roll: {{ user.roll_number }}</small>{% endif %}
+                            {% if user.joining_year and user.passing_year %}<small class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Batch {{ user.joining_year }}–{{ user.passing_year }}</small>{% endif %}
+                            {% if user.company %}<small class="text-info d-block"><i class="bi bi-briefcase me-1"></i>{{ user.company }}</small>{% endif %}
+                            {% if user.current_job_title %}<small class="text-muted d-block"><i class="bi bi-person-workspace me-1"></i>{{ user.current_job_title }}</small>{% endif %}
+                            <a href="{{ url_for('profile.view_profile', user_id=user.id) }}" class="btn btn-sm btn-primary mt-2">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# -- empty state -- #}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-search display-4 d-block mb-3"></i>
+            <p>No users found matching your search.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

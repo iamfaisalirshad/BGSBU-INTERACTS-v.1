@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Approved Jobs - Admin{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0"><i class="bi bi-briefcase text-success me-2"></i>Approved Jobs</h3>
+            <p class="text-muted mb-0">All published job postings currently visible to users.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+        </div>
+    </div>
+
+    {% if jobs %}
+    <div class="table-responsive card border-0 shadow-sm">
+        <table class="table table-dark table-hover mb-0">
+            <thead class="table-light text-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Job Title</th>
+                    <th>Company</th>
+                    <th>Posted By</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Posted On</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>{{ job.job_id }}</td>
+                    <td>{{ job.title }}</td>
+                    <td>{{ job.company }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ job.poster_name }}</div>
+                        <small class="text-muted">{{ job.poster_email }}</small>
+                    </td>
+                    <td>{{ job.job_type|capitalize }}</td>
+                    <td>{{ job.location or '-' }}</td>
+                    <td>{{ job.created_at.strftime('%b %d, %Y') if job.created_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-briefcase display-4 d-block mb-3"></i>
+        <p>No approved jobs yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

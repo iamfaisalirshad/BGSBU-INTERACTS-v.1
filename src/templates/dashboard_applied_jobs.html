@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Applied Jobs - Dashboard{% endblock %}
+{% block content %}
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-2"><i class="bi bi-file-earmark-check text-success me-2"></i>My Job Applications</h3>
+            <p class="text-muted mb-0">Total: <strong>{{ total_count }}</strong> applications</p>
+        </div>
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+
+    {% if applications %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead class="border-bottom border-secondary">
+                        <tr>
+                            <th>Job Title</th>
+                            <th>Company</th>
+                            <th>Location</th>
+                            <th>Type</th>
+                            <th>Salary</th>
+                            <th>Applied Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for app in applications %}
+                        <tr>
+                            <td>
+                                <strong>{{ app.title }}</strong>
+                            </td>
+                            <td>{{ app.company }}</td>
+                            <td>{{ app.location or '-' }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'info' if app.job_type == 'Internship' else 'success' if app.job_type == 'Full-time' else 'warning' }}">{{ app.job_type }}</span>
+                            </td>
+                            <td>{{ app.salary or '-' }}</td>
+                            <td>{{ app.applied_at.strftime('%b %d, %Y') if app.applied_at else 'Recently' }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'warning text-dark' if app.status == 'pending' else 'success' if app.status == 'accepted' else 'danger' if app.status == 'rejected' else 'secondary' }}">{{ app.status|capitalize }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('jobs.view_job', job_id=app.job_id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye me-1"></i>View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_applied_jobs', page=1) }}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_applied_jobs', page=page-1) }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_applied_jobs', page=p) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_applied_jobs', page=page+1) }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('dashboard.dashboard_applied_jobs', page=total_pages) }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-briefcase display-4 d-block mb-3"></i>
+            <p>You haven't applied to any jobs yet.</p>
+            <a href="{{ url_for('dashboard.dashboard_jobs_view') }}" class="btn btn-primary">Browse Jobs</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

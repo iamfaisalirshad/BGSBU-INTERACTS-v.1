@@ -1,0 +1,182 @@
+{# ============================================================ #}
+{# Template: connections.html                                     #}
+{# Description: Connections management page with three tabs:      #}
+{#   Accepted (with Alumni / Student sections), Received, Sent.   #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Connections{% endblock %}
+{% block content %}
+<div class="py-4">
+    <h3 class="fw-bold mb-4"><i class="bi bi-people-fill text-primary me-2"></i>My Connections</h3>
+    {# -- tab navigation with search centre and filter right -- #}
+    <div class="row align-items-center mb-4 g-2">
+        <div class="col-md-4">
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-primary active" data-bs-toggle="pill" data-bs-target="#accepted-tab" onclick="switchTab('accepted-tab')">
+                    <i class="bi bi-people me-1"></i>Connections <span class="badge bg-primary ms-1">{{ accepted|length }}</span>
+                </button>
+                <button class="btn btn-outline-primary" data-bs-toggle="pill" data-bs-target="#received-tab" onclick="switchTab('received-tab')">
+                    <i class="bi bi-inbox me-1"></i>Received <span class="badge bg-warning text-dark ms-1">{{ pending_received|length }}</span>
+                </button>
+                <button class="btn btn-outline-primary" data-bs-toggle="pill" data-bs-target="#sent-tab" onclick="switchTab('sent-tab')">
+                    <i class="bi bi-send me-1"></i>Sent <span class="badge bg-info ms-1">{{ pending_sent|length }}</span>
+                </button>
+            </div>
+        </div>
+        {# -- search input centre -- #}
+        <div class="col-md-4">
+            <div class="input-group"><span class="input-group-text bg-dark border-secondary"><i class="bi bi-search"></i></span><input type="text" class="form-control bg-dark border-secondary text-white" id="connSearch" placeholder="Search by name..." oninput="filterConnectionsByName()" autocomplete="off"></div>
+        </div>
+        {# -- role filter right -- #}
+        <div class="col-md-4 text-md-end" id="filterGroup">
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-secondary active sub-filter-btn" data-subfilter="all">All <span class="badge bg-secondary ms-1">{{ accepted|length }}</span></button>
+                <button class="btn btn-outline-secondary sub-filter-btn" data-subfilter="students">Students <span class="badge bg-info ms-1">{{ accepted_students|length }}</span></button>
+                <button class="btn btn-outline-secondary sub-filter-btn" data-subfilter="alumni">Alumni <span class="badge bg-success ms-1">{{ accepted_alumni|length }}</span></button>
+            </div>
+        </div>
+    </div>
+    {# ==================== TAB CONTENT ==================== #}
+    <div class="tab-content">
+        {# -- accepted connections tab -- #}
+        <div class="tab-pane fade show active" id="accepted-tab">
+            {% if accepted %}
+            <div class="row g-4" id="connectionsGrid">
+                {# -- Alumni Section -- #}
+                <div class="col-lg-6" id="alumniSection">
+                    <div class="d-flex align-items-center mb-3">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-mortarboard-fill text-success me-2"></i>Alumni</h5>
+                        <span class="badge bg-success ms-2">{{ accepted_alumni|length }}</span>
+                    </div>
+                    {% if accepted_alumni %}
+                    <div class="row g-3">
+                        {% for c in accepted_alumni %}
+                        <div class="col-12 conn-item" data-role="{{ c.role }}" id="conn-{{ c.connection_id }}">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <img src="{{ url_for('static', filename='images/default.svg') if not c.profile_pic or c.profile_pic=='default.svg' else '/uploads/'+c.profile_pic }}" class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=c.id) }}" class="text-decoration-none text-white">{{ c.name }}</a></h6>
+                                        <small class="text-muted">{{ c.department }}</small>
+                                        <span class="badge bg-success" style="font-size:0.6rem">{{ c.role|capitalize }}</span>
+                                        {% if c.roll_number %}<br><small class="text-muted"><i class="bi bi-person-badge me-1"></i>{{ c.roll_number }}</small>{% endif %}
+                                        {% if c.joining_year and c.passing_year %}<br><small class="text-muted"><i class="bi bi-calendar me-1"></i>Batch {{ c.joining_year }}–{{ c.passing_year }}</small>{% endif %}
+                                        {% if c.company %}<br><small class="text-muted">{{ c.company }}</small>{% endif %}
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('chat.chat_page') }}?user={{ c.id }}" class="btn btn-sm btn-outline-success me-1"><i class="bi bi-chat-dots"></i></a>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeConn({{ c.connection_id }})"><i class="bi bi-person-dash"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted alumni-empty">
+                        <i class="bi bi-people display-6 d-block mb-2"></i>
+                        <p class="mb-0">No alumni connections yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {# -- Students Section -- #}
+                <div class="col-lg-6" id="studentsSection">
+                    <div class="d-flex align-items-center mb-3">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-book-fill text-info me-2"></i>Students</h5>
+                        <span class="badge bg-info ms-2">{{ accepted_students|length }}</span>
+                    </div>
+                    {% if accepted_students %}
+                    <div class="row g-3">
+                        {% for c in accepted_students %}
+                        <div class="col-12 conn-item" data-role="{{ c.role }}" id="conn-{{ c.connection_id }}">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <img src="{{ url_for('static', filename='images/default.svg') if not c.profile_pic or c.profile_pic=='default.svg' else '/uploads/'+c.profile_pic }}" class="rounded-circle me-3" width="60" height="60" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=c.id) }}" class="text-decoration-none text-white">{{ c.name }}</a></h6>
+                                        <small class="text-muted">{{ c.department }}</small>
+                                        <span class="badge bg-info" style="font-size:0.6rem">{{ c.role|capitalize }}</span>
+                                        {% if c.roll_number %}<br><small class="text-muted"><i class="bi bi-person-badge me-1"></i>{{ c.roll_number }}</small>{% endif %}
+                                        {% if c.joining_year and c.passing_year %}<br><small class="text-muted"><i class="bi bi-calendar me-1"></i>Batch {{ c.joining_year }}–{{ c.passing_year }}</small>{% endif %}
+                                        {% if c.company %}<br><small class="text-muted">{{ c.company }}</small>{% endif %}
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('chat.chat_page') }}?user={{ c.id }}" class="btn btn-sm btn-outline-success me-1"><i class="bi bi-chat-dots"></i></a>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeConn({{ c.connection_id }})"><i class="bi bi-person-dash"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted students-empty">
+                        <i class="bi bi-people display-6 d-block mb-2"></i>
+                        <p class="mb-0">No student connections yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-people display-4 d-block mb-3"></i>
+                <p>No connections yet</p>
+                <a href="{{ url_for('directory.alumni_directory') }}" class="btn btn-primary">Find People</a>
+            </div>
+            {% endif %}
+        </div>
+        {# -- received requests tab -- #}
+        <div class="tab-pane fade" id="received-tab">
+            {% if pending_received %}
+            <div class="row g-3">{% for r in pending_received %}
+                <div class="col-lg-4 col-md-6 req-item" id="req-{{ r.connection_id }}">
+                    <div class="card border-0 shadow-sm border-start border-warning border-3 h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <img src="{{ url_for('static', filename='images/default.svg') if not r.profile_pic or r.profile_pic=='default.svg' else '/uploads/'+r.profile_pic }}" class="rounded-circle me-3" width="50" height="50" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                                <div><h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=r.id) }}" class="text-decoration-none text-white">{{ r.name }}</a></h6><small class="text-muted">{{ r.department }} • {{ r.role|capitalize }}{% if r.roll_number %} • {{ r.roll_number }}{% endif %}</small></div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success btn-sm flex-fill" onclick="respondReq({{ r.connection_id }},'accept')"><i class="bi bi-check-lg me-1"></i>Accept</button>
+                                <button class="btn btn-outline-danger btn-sm flex-fill" onclick="respondReq({{ r.connection_id }},'reject')"><i class="bi bi-x-lg me-1"></i>Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}</div>
+            {% else %}
+            <div class="text-center py-5 text-muted"><p>No pending requests</p></div>
+            {% endif %}
+        </div>
+        {# -- sent requests tab -- #}
+        <div class="tab-pane fade" id="sent-tab">
+            {% if pending_sent %}
+            <div class="row g-3">{% for r in pending_sent %}
+                <div class="col-lg-4 col-md-6 sent-item" id="sent-{{ r.id }}">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center">
+                            <img src="{{ url_for('static', filename='images/default.svg') if not r.profile_pic or r.profile_pic=='default.svg' else '/uploads/'+r.profile_pic }}" class="rounded-circle me-3" width="50" height="50" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                            <div class="flex-grow-1"><h6 class="mb-0"><a href="{{ url_for('profile.view_profile', user_id=r.id) }}" class="text-decoration-none text-white">{{ r.name }}</a></h6><small class="text-muted">{{ r.department }}{% if r.roll_number %} • {{ r.roll_number }}{% endif %}</small><br><span class="badge bg-warning text-dark mt-1">Pending</span><div class="mt-2"><button class="btn btn-sm btn-outline-danger" onclick="cancelReq({{ r.id }},this)"><i class="bi bi-x-lg me-1"></i>Cancel Request</button></div></div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}</div>
+            {% else %}
+            <div class="text-center py-5 text-muted"><p>No sent requests</p></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{# ==================== JAVASCRIPT ==================== #}
+<script>
+function respondReq(id,action){fetch('/api/respond-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id,action:action})}).then(r=>r.json()).then(d=>{if(d.success){const el=document.getElementById('req-'+id);if(el)el.remove();updateTabBadges();showToast(d.message,'success');setTimeout(()=>location.reload(),1000);}else{showToast(d.message||'Error','danger');}});}
+function removeConn(id){customConfirm('Remove connection?',function(confirmed){if(!confirmed)return;fetch('/api/remove-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connection_id:id})}).then(r=>r.json()).then(d=>{if(d.success){const el=document.getElementById('conn-'+id);if(el)el.remove();updateTabBadges();showToast('Removed','info');}});});}
+function cancelReq(id,btn){customConfirm('Cancel this request?',function(confirmed){if(!confirmed)return;fetch('/api/remove-connection-with-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:id})}).then(r=>r.json()).then(d=>{if(d.success){const el=document.getElementById('sent-'+id);if(el)el.remove();updateTabBadges();showToast('Request cancelled','info');setTimeout(()=>location.reload(),800);}else{showToast(d.message,'warning');}});});}
+function updateTabBadges(){const map=[['sent-tab','.sent-item'],['received-tab','.req-item']];for(let i=0;i<map.length;i++){const btn=document.querySelector('[data-bs-target="#'+map[i][0]+'"]');const badge=btn?btn.querySelector('.badge'):null;if(badge){badge.textContent=document.querySelectorAll(map[i][1]).length;}}}
+function switchTab(tab){['accepted-tab','received-tab','sent-tab'].forEach(t=>{const pane=document.getElementById(t);if(pane){pane.classList.toggle('show',t===tab);pane.classList.toggle('active',t===tab);}const btn=document.querySelector('[data-bs-target="#'+t+'"]');if(btn){btn.classList.toggle('active',t===tab);}});if(tab!=='accepted-tab'){document.getElementById('filterGroup').style.display='none';}else{document.getElementById('filterGroup').style.display='';document.querySelectorAll('.sub-filter-btn').forEach(b=>b.classList.remove('active'));document.querySelector('.sub-filter-btn[data-subfilter="all"]').classList.add('active');filterSections('all');}}
+document.querySelectorAll('.sub-filter-btn').forEach(btn=>{btn.addEventListener('click',function(){document.querySelectorAll('.sub-filter-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');filterSections(this.dataset.subfilter);});});
+function filterSections(subfilter){const alumni=document.getElementById('alumniSection');const students=document.getElementById('studentsSection');if(alumni)alumni.style.display=(subfilter==='all'||subfilter==='alumni')?'':'none';if(students)students.style.display=(subfilter==='all'||subfilter==='students')?'':'none';filterConnectionsByName();}
+function filterConnectionsByName(){const q=document.getElementById('connSearch').value.toLowerCase();document.querySelectorAll('#accepted-tab .conn-item').forEach(item=>{const section=item.closest('#alumniSection, #studentsSection');const sectionVisible=!section||section.style.display!=='none';const name=(item.querySelector('h6 a')?.textContent||'').toLowerCase();item.style.display=(sectionVisible&&name.includes(q))?'':'none';});}
+document.getElementById('connSearch').addEventListener('input',filterConnectionsByName);
+</script>
+{% endblock %}

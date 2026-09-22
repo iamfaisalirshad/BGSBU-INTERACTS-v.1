@@ -1,0 +1,33 @@
+{#
+  Directory template for BGSBU Interacts
+  Searchable, filterable directory of alumni and students with pagination
+#}
+{% extends "base.html" %}
+{% block title %}Directory - BGSBU Interacts{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <h3 class="fw-bold mb-4"><i class="bi bi-search text-primary me-2"></i>Alumni & Student Directory</h3>
+    {# ==================== SEARCH & FILTERS ==================== #}
+    <div class="card border-0 shadow-sm mb-4"><div class="card-body"><div class="row g-3">
+        {# -- Search Input -- #}
+        <div class="col-md-4"><div class="input-group"><span class="input-group-text bg-dark border-secondary"><i class="bi bi-search"></i></span><input type="text" class="form-control bg-dark border-secondary text-white" id="searchInput" placeholder="Search name or email..." autocomplete="off"></div></div>
+        {# -- Department Filter -- #}
+        <div class="col-md-2"><select class="form-select bg-dark border-secondary text-white" id="deptFilter"><option value="">All Departments</option></select></div>
+        {# -- Company Filter -- #}
+        <div class="col-md-2"><input type="text" class="form-control bg-dark border-secondary text-white" id="companyFilter" placeholder="Company..."></div>
+        {# -- Skill Filter -- #}
+        <div class="col-md-2"><input type="text" class="form-control bg-dark border-secondary text-white" id="skillFilter" placeholder="Skill..."></div>
+        {# -- Role Filter -- #}
+        <div class="col-md-2"><select class="form-select bg-dark border-secondary text-white" id="roleFilter"><option value="">All Roles</option><option value="alumni">Alumni</option><option value="student">Student</option></select></div>
+    </div></div></div>
+    {# ==================== RESULTS HEADER ==================== #}
+    <div class="d-flex justify-content-between align-items-center mb-3"><span class="text-muted" id="resultCount">Loading...</span></div>
+    {# ==================== DIRECTORY LISTING ==================== #}
+    <div class="row g-3" id="directoryResults"><div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div></div>
+    {# ==================== PAGINATION ==================== #}
+    <nav class="mt-4 d-flex justify-content-center" id="bottomPagination"></nav>
+</div>
+{% endblock %}
+{# -- JavaScript for live search and filtering -- #}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/search.js') }}"></script>{% endblock %}

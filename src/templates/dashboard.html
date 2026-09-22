@@ -1,0 +1,80 @@
+{# ============================================================ #}
+{# Template: dashboard.html                                       #}
+{# Description: Main dashboard – welcome header, stats cards,     #}
+{#   quick action links, recommended people, and notifications.   #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Dashboard - BGSBU Interacts{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">{% endblock %}
+{% block content %}
+{# ==================== WELCOME HEADER ==================== #}
+<div class="py-4">
+    <div class="row mb-4"><div class="col-12">
+        <div class="welcome-card p-4 rounded-4 shadow-lg">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4 class="fw-bold mb-1"><i class="bi bi-person-circle me-2"></i>{{ user.name }}</h4>
+                    <p class="mb-1"><span class="badge bg-{{ 'info' if user.role=='student' else 'success' if user.role=='alumni' else 'warning' }} me-2">{{ user.role|capitalize }}</span>{{ user.department or 'No department' }}{% if user.joining_year and user.passing_year %} • Batch {{ user.joining_year }}–{{ user.passing_year }}{% endif %}</p>
+                    <p class="text-muted mb-0 small"><i class="bi bi-envelope me-1"></i>{{ user.email }}{% if user.phone %} • <i class="bi bi-telephone ms-2 me-1"></i>{{ user.phone }}{% endif %}{% if user.roll_number %} • <i class="bi bi-qr-code ms-2 me-1"></i>{{ user.roll_number }}{% endif %}</p>
+                </div>
+            </div>
+        </div>
+    </div></div>
+    {# ==================== STATISTICS CARDS ==================== #}
+    <div class="row mb-4 g-3">
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('dashboard.dashboard_all_users') }}" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3"><i class="bi bi-people-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_users }}</h3><small class="text-muted">All Users</small></div></div></a></div>
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('dashboard.dashboard_pending_requests') }}" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-warning bg-opacity-10 text-warning rounded-3 p-3 me-3"><i class="bi bi-person-plus-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ pending_requests }}</h3><small class="text-muted">Pending Requests</small></div></div></a></div>
+        {% if session.get('role') == 'student' %}
+        <div class="col-lg-3 col-md-6"><a id="totalAlumniCard" href="{{ url_for('dashboard.dashboard_view_alumni') }}" onclick="window.location.href='{{ url_for('dashboard.dashboard_view_alumni') }}'" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-success bg-opacity-10 text-success rounded-3 p-3 me-3"><i class="bi bi-mortarboard-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_alumni }}</h3><small class="text-muted">Total Alumni</small></div></div></a></div>
+        <div class="col-lg-3 col-md-6"><a id="allStudentsCard" href="{{ url_for('dashboard.dashboard_total_students') }}" onclick="window.location.href='{{ url_for('dashboard.dashboard_total_students') }}'" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3"><i class="bi bi-people-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_students }}</h3><small class="text-muted">All Students</small></div></div></a></div>
+        {% else %}
+        <div class="col-lg-3 col-md-6"><a id="totalStudentsCard" href="{{ url_for('dashboard.dashboard_total_students') }}" onclick="window.location.href='{{ url_for('dashboard.dashboard_total_students') }}'" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-success bg-opacity-10 text-success rounded-3 p-3 me-3"><i class="bi bi-people-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_students }}</h3><small class="text-muted">Total Students</small></div></div></a></div>
+        {% endif %}
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('dashboard.dashboard_jobs_view') }}" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-info bg-opacity-10 text-info rounded-3 p-3 me-3"><i class="bi bi-briefcase-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_jobs }}</h3><small class="text-muted">Active Jobs</small></div></div></a></div>
+        {% if session.get('role') == 'student' %}
+        <div class="col-lg-3 col-md-6"><a id="activeMentorsCard" href="{{ url_for('dashboard.dashboard_mentors') }}" onclick="window.location.href='{{ url_for('dashboard.dashboard_mentors') }}'" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-secondary bg-opacity-10 text-secondary rounded-3 p-3 me-3"><i class="bi bi-person-workspace fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_mentors }}</h3><small class="text-muted">Active Mentors</small></div></div></a></div>
+        {% elif session.get('role') == 'alumni' %}
+        <div class="col-lg-3 col-md-6"><a id="totalAlumniCard" href="{{ url_for('dashboard.dashboard_view_alumni') }}" onclick="window.location.href='{{ url_for('dashboard.dashboard_view_alumni') }}'" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-success bg-opacity-10 text-success rounded-3 p-3 me-3"><i class="bi bi-mortarboard-fill fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_alumni }}</h3><small class="text-muted">Total Alumni</small></div></div></a></div>
+        {% else %}
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('dashboard.dashboard_mentors') }}" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-secondary bg-opacity-10 text-secondary rounded-3 p-3 me-3"><i class="bi bi-person-workspace fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ total_mentors }}</h3><small class="text-muted">Active Mentors</small></div></div></a></div>
+        {% endif %}
+        <div class="col-lg-3 col-md-6"><a href="{{ url_for('dashboard.dashboard_applied_jobs') }}" class="stat-card card border-0 shadow-sm h-100 text-decoration-none text-reset" style="cursor:pointer"><div class="card-body d-flex align-items-center"><div class="stat-icon bg-danger bg-opacity-10 text-danger rounded-3 p-3 me-3"><i class="bi bi-file-earmark-check fs-3"></i></div><div><h3 class="mb-0 fw-bold">{{ user_applied_jobs }}</h3><small class="text-muted">Applied Jobs</small></div></div></a></div>
+    </div>
+    {# ==================== QUICK ACTIONS ==================== #}
+    <div class="row mb-4 g-3">
+        <div class="col-12"><h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge text-warning me-2"></i>Quick Actions</h5></div>
+        <div class="col-md-3 col-6"><a href="{{ url_for('connections.connections_page') }}" class="card border-0 shadow-sm text-decoration-none quick-action-card h-100"><div class="card-body text-center py-4"><i class="bi bi-people text-primary fs-2 mb-2 d-block"></i><span class="text-white fw-semibold">My Connections</span></div></a></div>
+        <div class="col-md-3 col-6">
+            <a href="{{ url_for('chat.chat_page') }}" class="card border-0 shadow-sm text-decoration-none quick-action-card h-100">
+                <div class="card-body text-center py-4 position-relative">
+                    <i class="bi bi-chat-dots text-success fs-2 mb-2 d-block"></i>
+                    {% if unread_messages > 0 %}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.65rem;">{{ unread_messages }}</span>
+                    {% endif %}
+                    <span class="text-white fw-semibold">Messages</span>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-6"><a href="{{ url_for('jobs.jobs_page') }}" class="card border-0 shadow-sm text-decoration-none quick-action-card h-100"><div class="card-body text-center py-4"><i class="bi bi-briefcase text-info fs-2 mb-2 d-block"></i><span class="text-white fw-semibold">Browse Jobs</span></div></a></div>
+        <div class="col-md-3 col-6"><a href="{{ url_for('mentorship.mentorship_page') }}" class="card border-0 shadow-sm text-decoration-none quick-action-card h-100"><div class="card-body text-center py-4"><i class="bi bi-person-workspace text-warning fs-2 mb-2 d-block"></i><span class="text-white fw-semibold">Mentorship</span></div></a></div>
+        {% if session.get('role') == 'admin' %}<div class="col-md-3 col-6"><a href="{{ url_for('admin.manage_protocols') }}" class="card border-0 shadow-sm text-decoration-none quick-action-card h-100"><div class="card-body text-center py-4"><i class="bi bi-sliders text-danger fs-2 mb-2 d-block"></i><span class="text-white fw-semibold">Protocols</span></div></a></div>{% endif %}
+    </div>
+    {# ==================== RECOMMENDED PEOPLE ==================== #}
+    <div class="row mb-4"><div class="col-12"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="fw-bold mb-0"><i class="bi bi-stars text-primary me-2"></i>Recommended For You</h5><a href="{{ url_for('directory.alumni_directory') }}" class="btn btn-sm btn-outline-primary">View All</a></div></div>
+    {% if recommended %}{% for person in recommended %}
+    <div class="col-lg-4 col-md-6 mb-3"><div class="card border-0 shadow-sm h-100"><div class="card-body p-3"><div class="d-flex align-items-start">
+        <img src="{{ url_for('static', filename='images/default.svg') if not person.profile_pic or person.profile_pic=='default.svg' else '/uploads/'+person.profile_pic }}" class="rounded-circle me-3" width="50" height="50" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+        <div class="flex-grow-1"><h6 class="mb-0 fw-semibold"><a href="{{ url_for('profile.view_profile', user_id=person.id) }}" class="text-decoration-none text-white">{{ person.name }}</a></h6><small class="text-muted">{{ person.department }}</small><span class="badge bg-{{ 'info' if person.role=='student' else 'success' }} ms-1" style="font-size:0.65rem">{{ person.role|capitalize }}</span>{% if person.role == 'student' %}{% if person.student_year == 0 %}<br><span class="badge bg-secondary mt-1" style="font-size:0.65rem">Degree Completed</span>{% elif person.student_year %}<br><small class="text-muted">Sem {{ person.student_year }}</small>{% endif %}{% endif %}{% if person.joining_year and person.passing_year %}<br><small class="text-muted"><i class="bi bi-calendar me-1"></i>{{ person.joining_year }}–{{ person.passing_year }}</small>{% endif %}{% if person.company and person.role != 'student' %}<br><small class="text-muted"><i class="bi bi-building me-1"></i>{{ person.company }}</small>{% endif %}{% if person.current_job_title and person.role != 'student' %}<br><small class="text-muted"><i class="bi bi-person-workspace me-1"></i>{{ person.current_job_title }}</small>{% endif %}{% if person.skills %}<div class="mt-1">{% for skill in person.skills.split(',')[:3] %}<span class="badge bg-dark border border-secondary" style="font-size:0.65rem">{{ skill.strip() }}</span>{% endfor %}</div>{% endif %}</div>
+        <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="sendConnectionRequest({{ person.id }},this)"><i class="bi bi-person-plus"></i></button>
+    </div></div></div></div>
+    {% endfor %}{% else %}<div class="col-12"><div class="card border-0 shadow-sm"><div class="card-body text-center py-5 text-muted"><i class="bi bi-people display-4 d-block mb-3"></i><p>No recommendations yet</p></div></div></div>{% endif %}</div>
+    {# -- notifications -- #}
+    {% if notifications %}<div id="dashboard-notifs" class="row"><div class="col-12"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="fw-bold mb-0"><i class="bi bi-bell text-info me-2"></i>Recent Notifications</h5><button class="btn btn-sm btn-outline-secondary" onclick="clearDashboardNotifs()"><i class="bi bi-check-all me-1"></i>Clear All</button></div><div class="card border-0 shadow-sm"><div class="list-group list-group-flush">{% for n in notifications[:5] %}<a href="{{ n.action_url or '#' }}" class="list-group-item list-group-item-action bg-dark-card border-secondary text-decoration-none" onclick="notifClick({{ n.id }}, this.href); return false;"><div class="d-flex justify-content-between align-items-center"><span><i class="bi bi-bell text-primary me-2"></i>{{ n.message }}</span><small class="text-muted">{{ n.created_at.strftime('%b %d, %H:%M') if n.created_at else '' }}</small></div></a>{% endfor %}</div></div></div></div>{% endif %}
+</div>
+{# ==================== JAVASCRIPT ==================== #}
+<script>
+function sendConnectionRequest(userId,btn){fetch('/api/send-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver_id:userId})}).then(r=>r.json()).then(d=>{if(d.success){btn.innerHTML='<i class="bi bi-check"></i>';btn.className='btn btn-sm btn-success ms-2';btn.disabled=true;showToast('Request sent!','success');}else{showToast(d.message,'warning');}});}
+function notifClick(id,url){fetch('/api/notifications/mark-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notification_id:id})}).then(r=>r.json()).then(()=>{window.location.href=url;}).catch(()=>{window.location.href=url;});}
+function clearDashboardNotifs(){fetch('/api/notifications/mark-all-read',{method:'POST',headers:{'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{if(d.success){updateNotifBadge();var el=document.getElementById('dashboard-notifs');if(el){el.remove();}}}).catch(()=>{});}
+</script>
+{% endblock %}

@@ -1,0 +1,603 @@
+{#
+  Mentorship detail page for BGSBU Interacts
+  Shows mentorship journey: status, participant info, progress stats, session history,
+  schedule session modal, share guidance modal, rate session modal, and feedback modal
+#}
+{% extends "base.html" %}
+{% block title %}Mentorship - {{ mentorship.mentor_name if is_mentor else mentorship.mentee_name }}{% endblock %}
+{% block content %}
+<style>
+.stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.3) !important; }
+.timeline-item { position: relative; padding-left: 28px; padding-bottom: 20px; }
+.timeline-item::before { content: ''; position: absolute; left: 10px; top: 8px; bottom: 0; width: 2px; background: var(--bs-secondary); }
+.timeline-item:last-child::before { display: none; }
+.timeline-item .dot { position: absolute; left: 4px; top: 6px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid; background: var(--bs-dark); }
+.modal-input { transition: border-color 0.2s ease; }
+.modal-input:focus { border-color: var(--bs-primary) !important; box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.15); }
+</style>
+<div class="py-4">
+    {# ==================== PAGE HEADER ==================== #}
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h3 class="fw-bold mb-0"><i class="bi bi-person-hearts text-primary me-2"></i>Mentorship Journey</h3>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('mentorship.mentorship_dashboard') }}" class="btn btn-outline-info btn-sm"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+            <a href="{{ url_for('mentorship.mentorship_page') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        </div>
+    </div>
+
+    {# ==================== STATUS ALERT ==================== #}
+    <div class="alert alert-{{ 'success' if mentorship.status in ['accepted','active'] else 'info' if mentorship.status=='requested' else 'secondary' }} border-start border-{{ 'success' if mentorship.status in ['accepted','active'] else 'info' if mentorship.status=='requested' else 'secondary' }} border-5 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1 fw-bold">
+                    {% if mentorship.status == 'requested' %}
+                        <i class="bi bi-hourglass-split"></i> Requested — Awaiting Response
+                    {% elif mentorship.status in ['accepted', 'active'] %}
+                        <i class="bi bi-link-45deg"></i> Now Connected
+                    {% elif mentorship.status == 'completed' %}
+                        <i class="bi bi-check-lg"></i> Completed
+                    {% else %}
+                        <i class="bi bi-x-circle"></i> {{ mentorship.status|capitalize }}
+                    {% endif %}
+                </h5>
+                <p class="mb-0 text-muted">
+                    Started {{ mentorship.created_at.strftime('%B %d, %Y') if mentorship.created_at else 'recently' }}
+                </p>
+            </div>
+            <div class="text-end">
+                <small class="text-muted">ID: #{{ mentorship.id }}</small>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== INFO CARDS ROW ==================== #}
+    <div class="row g-3 mb-4">
+        {# ---- Other Party Card ---- #}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm border-start border-primary border-3 h-100 stat-card">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-person-check me-2"></i>
+                        {% if is_mentor %}Your Mentee{% else %}Your Mentor{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ url_for('static', filename='images/default.svg') if not (mentorship.mentee_pic if not is_mentor else mentorship.mentor_pic) or (mentorship.mentee_pic if not is_mentor else mentorship.mentor_pic)=='default.svg' else '/uploads/'+(mentorship.mentee_pic if not is_mentor else mentorship.mentor_pic) }}" class="rounded-circle border border-secondary" width="60" height="60" style="object-fit:cover" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                        <div>
+                            <h5 class="mb-0">
+                                <a href="{{ url_for('profile.view_profile', user_id=mentorship.mentee_id if not is_mentor else mentorship.mentor_id) }}" class="text-decoration-none text-white">
+                                    {{ mentorship.mentee_name if not is_mentor else mentorship.mentor_name }}
+                                </a>
+                                {% if not is_mentor and mentorship.mentor_verified %}<span class="badge bg-primary ms-1"><i class="bi bi-patch-check-fill"></i> Verified</span>{% endif %}
+                            </h5>
+                            <p class="text-muted mb-0"><i class="bi bi-envelope me-1"></i>{{ mentorship.mentee_email if not is_mentor else mentorship.mentor_email }}</p>
+                        </div>
+                    </div>
+                    {% if mentorship.topic %}
+                    <div class="border-top border-secondary pt-3">
+                        <p class="text-muted small mb-1">Focus Area</p>
+                        <p class="mb-0"><strong><span class="badge bg-primary bg-opacity-25 text-primary border border-primary fs-6 px-3 py-1">{{ mentorship.topic }}</span></strong></p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ---- Progress Stats Card ---- #}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100 stat-card">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up me-2"></i>Progress Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-3 col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-3 fw-bold text-primary">{{ sessions|length }}</div>
+                                <small class="text-muted" style="font-size:0.7rem;">Sessions</small>
+                            </div>
+                        </div>
+                        <div class="col-3 col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-3 fw-bold text-success">
+                                    {% if sessions %}
+                                        {% set ratings = sessions|selectattr('rating')|map(attribute='rating')|list %}
+                                        {% if ratings|length > 0 %}
+                                            {{ "%.1f"|format(ratings|sum / ratings|length) }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted" style="font-size:0.7rem;">Avg Rating</small>
+                            </div>
+                        </div>
+                        <div class="col-3 col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-3 fw-bold text-info">{% set total_mins = sessions|map(attribute='duration_minutes')|select('number')|sum %}{{ total_mins }}</div>
+                                <small class="text-muted" style="font-size:0.7rem;">Minutes</small>
+                            </div>
+                        </div>
+                        <div class="col-3 col-md-3">
+                            <div class="text-center p-2">
+                                <div class="fs-3 fw-bold text-warning">{% set total_hrs = sessions|map(attribute='duration_minutes')|select('number')|sum %}{{ "%.1f"|format((total_hrs / 60)|round(1)) if total_hrs > 0 else '0.0' }}</div>
+                                <small class="text-muted" style="font-size:0.7rem;">Hours</small>
+                            </div>
+                        </div>
+                    </div>
+                    {# -- Next Meeting Block -- #}
+                    {% if mentorship.next_meeting %}
+                    <div class="mt-3 p-3 bg-dark rounded border border-info">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar-event text-info fs-5"></i>
+                            <div>
+                                <small class="text-muted d-block">Next Meeting</small>
+                                <span class="text-info fw-semibold">{{ mentorship.next_meeting.strftime('%B %d, %Y %H:%M') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {# -- Goals Block -- #}
+                    {% if mentorship.goals %}
+                    <div class="mt-3 p-3 bg-dark rounded border border-warning">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-bullseye text-warning fs-5 mt-1"></i>
+                            <div>
+                                <small class="text-muted d-block mb-1">Goals</small>
+                                <p class="mb-0 text-warning" style="white-space: pre-wrap;">{{ mentorship.goals }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ==================== ACTION BUTTONS ==================== #}
+    {% if mentorship.status in ['accepted', 'active'] %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                <i class="bi bi-calendar-plus me-2"></i>Schedule Session
+            </button>
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#guidanceModal">
+                <i class="bi bi-chat-dots me-2"></i>Share Guidance
+            </button>
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#setGoalsModal">
+                <i class="bi bi-bullseye me-2"></i>Set Goals
+            </button>
+        </div>
+        {% if is_mentor %}
+        <div class="col-md-3">
+            <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#addToGroupModal" onclick="loadMentorGroups()">
+                <i class="bi bi-people-fill me-2"></i>Add to Group
+            </button>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {# ==================== SESSION HISTORY TABLE ==================== #}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2"></i>Session History</h5>
+            <span class="badge bg-secondary">{{ sessions|length }} session(s)</span>
+        </div>
+        <div class="card-body p-0">
+            {% if sessions %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th class="ps-3">Date & Time</th>
+                                <th>Duration</th>
+                                <th>Rating</th>
+                                <th>Notes</th>
+                                <th>Feedback</th>
+                                <th class="pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in sessions %}
+                            <tr class="border-bottom border-secondary">
+                                <td class="ps-3">
+                                    <small><i class="bi bi-calendar3 me-1 text-muted"></i>{{ s.session_date.strftime('%b %d, %Y %H:%M') if s.session_date else '-' }}</small>
+                                </td>
+                                <td>
+                                    <small><i class="bi bi-clock me-1 text-muted"></i>{{ s.duration_minutes or 0 }} min</small>
+                                </td>
+                                <td>
+                                    {% if s.rating %}
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>{{ s.rating }}/5</span>
+                                    {% else %}
+                                        <small class="text-muted"><i class="bi bi-dash-circle me-1"></i>Not rated</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted" style="max-width: 180px; display: block; white-space: pre-wrap;">
+                                        {{ s.notes[:60] if s.notes else '-' }}{% if s.notes and s.notes|length > 60 %}...{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if s.feedback_from_mentor or s.feedback_from_mentee %}
+                                        <button class="btn btn-sm btn-outline-info" onclick="showFeedback({{ s.id }}, {{ s.feedback_from_mentor|tojson if s.feedback_from_mentor else 'null' }}, {{ s.feedback_from_mentee|tojson if s.feedback_from_mentee else 'null' }}, '{{ s.session_date.strftime('%b %d, %Y') if s.session_date else '' }}')" title="View feedback">
+                                            <i class="bi bi-chat-left-text-fill me-1"></i>View
+                                        </button>
+                                    {% else %}
+                                        <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                                <td class="pe-3">
+                                    {% if not s.rating %}
+                                        <button class="btn btn-sm btn-outline-success" onclick="rateSession({{ s.id }})">
+                                            <i class="bi bi-hand-thumbs-up me-1"></i>Rate
+                                        </button>
+                                    {% else %}
+                                        <small class="text-muted"><i class="bi bi-check-circle text-success"></i> Done</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                    <p>No sessions scheduled yet</p>
+                    {% if mentorship.status in ['accepted', 'active'] %}
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                        <i class="bi bi-calendar-plus me-1"></i>Schedule First Session
+                    </button>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ==================== PROGRESS TIMELINE ==================== #}
+    {% if sessions %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-signpost-2 me-2 text-info"></i>Journey Timeline</h5>
+        </div>
+        <div class="card-body">
+            {% for s in sessions %}
+            <div class="timeline-item">
+                <div class="dot border-{{ 'success' if s.rating and s.rating >= 4 else 'warning' if s.rating else 'secondary' }}"></div>
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                        <strong class="small">{{ s.session_date.strftime('%b %d, %Y') if s.session_date else 'Unknown date' }}</strong>
+                        <span class="text-muted mx-1">·</span>
+                        <small class="text-muted">{{ s.duration_minutes or 0 }} min session</small>
+                        {% if s.rating %}
+                        <span class="badge bg-warning text-dark ms-2" style="font-size:0.6rem;"><i class="bi bi-star-fill me-1"></i>{{ s.rating }}/5</span>
+                        {% endif %}
+                    </div>
+                    {% if s.meeting_link %}
+                    <a href="{{ s.meeting_link }}" target="_blank" class="btn btn-sm btn-outline-primary" style="font-size:0.7rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Meeting Link</a>
+                    {% endif %}
+                </div>
+                {% if s.notes %}
+                <small class="text-muted d-block mt-1" style="white-space: pre-wrap;">{{ s.notes[:120] }}{% if s.notes|length > 120 %}...{% endif %}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# ==================== SCHEDULE SESSION MODAL ==================== #}
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus text-primary me-2"></i>Schedule Session</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-calendar me-1"></i>Date & Time</label>
+                    <input type="datetime-local" class="form-control bg-secondary text-white border-secondary modal-input" id="sessionDate" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-clock me-1"></i>Duration (minutes)</label>
+                    <input type="number" class="form-control bg-secondary text-white border-secondary modal-input" id="sessionDuration" value="60" min="15" step="15" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-link-45deg me-1"></i>Meeting Link (optional)</label>
+                    <input type="url" class="form-control bg-secondary text-white border-secondary modal-input" id="sessionMeetingLink" placeholder="https://meet.google.com/...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-journal-text me-1"></i>Notes (optional)</label>
+                    <textarea class="form-control bg-secondary text-white border-secondary modal-input" id="sessionNotes" rows="3" placeholder="Session objectives, agenda..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="scheduleBtn" onclick="scheduleSession()"><i class="bi bi-check-lg me-1"></i>Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ==================== SHARE GUIDANCE MODAL ==================== #}
+<div class="modal fade" id="guidanceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-chat-dots text-info me-2"></i>Share Guidance</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-semibold small">Guidance Note</label>
+                <textarea class="form-control bg-secondary text-white border-secondary modal-input" id="guidanceContent" rows="5" placeholder="Share your guidance, advice, and recommendations..."></textarea>
+                <small class="text-muted mt-2 d-block"><i class="bi bi-info-circle me-1"></i>This will be shared with your mentee and added to your mentorship journey.</small>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info" id="guidanceBtn" onclick="addGuidance()"><i class="bi bi-send me-1"></i>Share</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ==================== SET GOALS MODAL ==================== #}
+<div class="modal fade" id="setGoalsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-bullseye text-warning me-2"></i>Set Goals & Topic</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-bookmark me-1"></i>Focus Topic</label>
+                    <input type="text" class="form-control bg-secondary text-white border-secondary modal-input" id="goalTopic" placeholder="e.g., Career Guidance, Technical Skills" value="{{ mentorship.topic or '' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-list-check me-1"></i>Goals</label>
+                    <textarea class="form-control bg-secondary text-white border-secondary modal-input" id="goalContent" rows="4" placeholder="Define goals for this mentorship...">{{ mentorship.goals or '' }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="goalsBtn" onclick="saveGoals()"><i class="bi bi-save me-1"></i>Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ==================== RATE SESSION MODAL ==================== #}
+<div class="modal fade" id="rateModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-star text-warning me-2"></i>Rate Session</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">How was this session?</label>
+                    <div class="d-flex gap-2" id="ratingStars">
+                        <button class="btn btn-outline-warning flex-fill" onclick="setRating(1)"><i class="bi bi-star-fill"></i> 1</button>
+                        <button class="btn btn-outline-warning flex-fill" onclick="setRating(2)"><i class="bi bi-star-fill"></i> 2</button>
+                        <button class="btn btn-outline-warning flex-fill" onclick="setRating(3)"><i class="bi bi-star-fill"></i> 3</button>
+                        <button class="btn btn-outline-warning flex-fill" onclick="setRating(4)"><i class="bi bi-star-fill"></i> 4</button>
+                        <button class="btn btn-outline-warning flex-fill" onclick="setRating(5)"><i class="bi bi-star-fill"></i> 5</button>
+                    </div>
+                    <input type="hidden" id="ratingValue" value="0">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-chat me-1"></i>Feedback (optional)</label>
+                    <textarea class="form-control bg-secondary text-white border-secondary modal-input" id="feedbackText" rows="3" placeholder="Share your feedback about this session..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="rateSubmitBtn" onclick="submitRating()"><i class="bi bi-check-lg me-1"></i>Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ==================== FEEDBACK MODAL ==================== #}
+<div class="modal fade" id="feedbackModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-chat-left-text text-info me-2"></i>Session Feedback</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="feedbackBody">
+                <div id="feedbackContent"></div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ==================== ADD TO GROUP MODAL ==================== #}
+<div class="modal fade" id="addToGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold"><i class="bi bi-people-fill text-success me-2"></i>Add Mentee to Group</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-person me-1"></i>Mentee</label>
+                    <input type="text" class="form-control bg-secondary text-white" id="addGroupMenteeName" value="{{ mentorship.mentee_name }}" readonly disabled>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small"><i class="bi bi-people me-1"></i>Select Group</label>
+                    <select class="form-select bg-secondary text-white border-secondary" id="addGroupSelect">
+                        <option value="">-- Loading groups... --</option>
+                    </select>
+                    <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Only groups you own are shown.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="addGroupBtn" onclick="addMenteeToGroup()"><i class="bi bi-plus-circle me-1"></i>Add to Group</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# -- Mentorship Detail JavaScript -- #}
+<script>
+let currentSessionId = null;
+
+function scheduleSession() {
+    const date = document.getElementById('sessionDate').value;
+    const duration = document.getElementById('sessionDuration').value;
+    const notes = document.getElementById('sessionNotes').value;
+    if (!date) { showToast('Please select a date and time', 'warning'); return; }
+    const meetingLink = document.getElementById('sessionMeetingLink').value;
+    const btn = document.getElementById('scheduleBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scheduling...';
+    fetch('/api/mentorship/{{ mentorship.id }}/schedule-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_date: date, duration: parseInt(duration), notes: notes, meeting_link: meetingLink })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Schedule';
+        if (d.success) { showToast('Session scheduled successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else { showToast(d.message || 'Error scheduling session', 'danger'); }
+    }).catch(e => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Schedule'; showToast('Error: ' + e.message, 'danger'); });
+}
+
+function addGuidance() {
+    const content = document.getElementById('guidanceContent').value.trim();
+    if (!content) { showToast('Please enter guidance content', 'warning'); return; }
+    const btn = document.getElementById('guidanceBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sharing...';
+    fetch('/api/mentorship/{{ mentorship.id }}/add-guidance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: content })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-send me-1"></i>Share';
+        if (d.success) { showToast('Guidance shared!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('guidanceModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else { showToast(d.message || 'Error sharing guidance', 'danger'); }
+    }).catch(e => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-send me-1"></i>Share'; showToast('Error: ' + e.message, 'danger'); });
+}
+
+function saveGoals() {
+    const topic = document.getElementById('goalTopic').value.trim();
+    const goals = document.getElementById('goalContent').value.trim();
+    const btn = document.getElementById('goalsBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    fetch('/api/mentorship/{{ mentorship.id }}/add-goals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: topic, goals: goals })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-save me-1"></i>Save';
+        if (d.success) { showToast('Goals updated!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('setGoalsModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else { showToast(d.message || 'Error saving goals', 'danger'); }
+    }).catch(e => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save me-1"></i>Save'; showToast('Error: ' + e.message, 'danger'); });
+}
+
+function rateSession(sessionId) {
+    currentSessionId = sessionId;
+    document.getElementById('ratingValue').value = '0';
+    document.querySelectorAll('#ratingStars .btn').forEach(b => { b.className = 'btn btn-outline-warning flex-fill'; });
+    const modal = new bootstrap.Modal(document.getElementById('rateModal'));
+    modal.show();
+}
+
+function setRating(rating) {
+    document.getElementById('ratingValue').value = rating;
+    document.querySelectorAll('#ratingStars .btn').forEach((btn, idx) => {
+        btn.className = idx < rating ? 'btn btn-warning flex-fill' : 'btn btn-outline-warning flex-fill';
+    });
+}
+
+function submitRating() {
+    const rating = parseInt(document.getElementById('ratingValue').value);
+    const feedback = document.getElementById('feedbackText').value.trim();
+    if (rating === 0) { showToast('Please select a rating', 'warning'); return; }
+    const btn = document.getElementById('rateSubmitBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Submitting...';
+    fetch('/api/mentorship/' + currentSessionId + '/rate-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rating: rating, feedback: feedback })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Submit';
+        if (d.success) { showToast('Thank you for the feedback!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('rateModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else { showToast(d.message || 'Error rating session', 'danger'); }
+    }).catch(e => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Submit'; showToast('Error: ' + e.message, 'danger'); });
+}
+
+function loadMentorGroups() {
+    const sel = document.getElementById('addGroupSelect');
+    sel.innerHTML = '<option value="">-- Loading... --</option>';
+    fetch('/api/mentorship/my-groups').then(r => r.json()).then(d => {
+        if (d.success && d.groups && d.groups.length) {
+            sel.innerHTML = '';
+            d.groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name + (g.member_count ? ' (' + g.member_count + ' members)' : '');
+                sel.appendChild(opt);
+            });
+        } else {
+            sel.innerHTML = '<option value="">-- No groups available --</option>';
+            document.getElementById('addGroupBtn').disabled = true;
+        }
+    }).catch(() => {
+        sel.innerHTML = '<option value="">-- Error loading groups --</option>';
+    });
+}
+
+function addMenteeToGroup() {
+    const sel = document.getElementById('addGroupSelect');
+    const groupId = sel.value;
+    if (!groupId) { showToast('Please select a group', 'warning'); return; }
+    const btn = document.getElementById('addGroupBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+    fetch('/api/mentorship/groups/add-member', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ group_id: parseInt(groupId), user_id: {{ mentorship.mentee_id }} })
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Add to Group';
+        if (d.success) {
+            showToast(d.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('addToGroupModal')).hide();
+        } else {
+            showToast(d.message, 'danger');
+        }
+    }).catch(() => {
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Add to Group';
+        showToast('Error adding to group', 'danger');
+    });
+}
+
+function showFeedback(sessionId, mentorFb, menteeFb, date) {
+    let html = '';
+    if (date) html += '<p class="text-muted small mb-3"><i class="bi bi-calendar me-1"></i>Session: ' + date + '</p>';
+    if (mentorFb) html += '<div class="mb-3 p-3 bg-dark rounded border border-info"><div class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-person-badge text-info"></i><strong class="small text-info">Mentor\'s Feedback</strong></div><p class="mb-0 small text-muted" style="white-space: pre-wrap;">' + mentorFb + '</p></div>';
+    if (menteeFb) html += '<div class="mb-3 p-3 bg-dark rounded border border-success"><div class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-person-badge text-success"></i><strong class="small text-success">Mentee\'s Feedback</strong></div><p class="mb-0 small text-muted" style="white-space: pre-wrap;">' + menteeFb + '</p></div>';
+    if (!html) html = '<div class="text-center py-4 text-muted"><i class="bi bi-chat fs-1 d-block mb-2"></i><p>No feedback available for this session</p></div>';
+    document.getElementById('feedbackContent').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('feedbackModal')).show();
+}
+</script>
+{% endblock %}

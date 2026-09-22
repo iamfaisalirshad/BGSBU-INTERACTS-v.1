@@ -1,0 +1,91 @@
+{# =============================================================================
+   Job Applications - Admin review of all job applications with status
+   management (reviewed / accepted / rejected).
+   ============================================================================= #}
+{% extends "base.html" %}
+{% block title %}Job Applications - Admin{% endblock %}
+{% block content %}
+<div class="py-4">
+    {# -- Page Header -- #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0"><i class="bi bi-journal-check text-success me-2"></i>Job Requests</h3>
+            <p class="text-muted mb-0">Review and approve or reject applications submitted for job postings.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+        </div>
+    </div>
+
+    {# ==================== APPLICATIONS TABLE ==================== #}
+    {% if applications %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead class="table-light text-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Applicant</th>
+                        <th>Job</th>
+                        <th>Company</th>
+                        <th>Status</th>
+                        <th>Applied On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr id="application-{{ app.application_id }}">
+                        <td>{{ app.application_id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-semibold">{{ app.applicant_name }}</span>
+                                <small class="text-muted">{{ app.applicant_email }}</small>
+                            </div>
+                            <small class="text-muted">{{ app.applicant_department or 'N/A' }}</small>
+                        </td>
+                        <td>{{ app.job_title }}</td>
+                        <td>{{ app.job_company }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'warning text-dark' if app.status=='pending' else 'info' if app.status=='reviewed' else 'success' if app.status=='accepted' else 'danger' }}">
+                                {{ app.status|capitalize }}
+                            </span>
+                        </td>
+                        <td>{{ app.applied_at.strftime('%b %d, %Y') if app.applied_at else '-' }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="updateApplication({{ app.application_id }}, 'reviewed')">Reviewed</button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="updateApplication({{ app.application_id }}, 'accepted')">Accept</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="updateApplication({{ app.application_id }}, 'rejected')">Reject</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {# -- Empty State -- #}
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-clock-history display-4 d-block mb-3"></i>
+        <p>No job applications found.</p>
+    </div>
+    {% endif %}
+</div>
+{# -- Application status update script -- #}
+<script>
+function updateApplication(applicationId, status) {
+    fetch('/api/admin/update-application-status', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({application_id: applicationId, status: status})
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast(d.message, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(d.message, 'danger');
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{# ============================================================ #}
+{# OTP verification page for email confirmation after signup    #}
+{# ============================================================ #}
+{% extends "base.html" %}
+{% block title %}Verify OTP{% endblock %}
+{% block auth_content %}
+<div class="auth-page">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-lg-5 col-md-7">
+                <div class="text-center mb-4">
+                    <i class="bi bi-shield-check text-primary display-3"></i>
+                    <h3 class="fw-bold mt-2">Verify Your Email</h3>
+                    <p class="text-muted">Enter the OTP to verify your email</p>
+                </div>
+                <div class="card bg-dark-card border-0 shadow-lg">
+                    <div class="card-body p-4 p-md-5">
+                        {# -- Dev OTP Debug Banner -- #}
+                        {% if session.get('dev_otp') %}
+                        <div class="alert alert-info text-center small py-2 mb-3">
+                            <i class="bi bi-info-circle me-1"></i>Dev OTP: <strong>{{ session.dev_otp }}</strong>
+                            <form action="{{ url_for('auth.clear_dev_otp') }}" method="POST" class="d-inline ms-2">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Dismiss">×</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                        {# -- OTP Input Form -- #}
+                        <form method="POST" data-loading-text="Verifying OTP...">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
+                            <div class="mb-4"><label class="form-label">Enter OTP</label><input type="text" name="otp" class="form-control form-control-lg bg-dark border-secondary text-white text-center" maxlength="6" required autofocus style="letter-spacing:0.5em;font-size:1.5rem"></div>
+                            <div class="d-grid"><button type="submit" class="btn btn-primary btn-lg fw-semibold"><i class="bi bi-check-circle me-2"></i>Verify</button></div>
+                        </form>
+                        <div class="text-center mt-4"><form action="{{ url_for('auth.resend_otp') }}" method="POST" class="d-inline"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button type="submit" class="btn btn-link text-muted"><i class="bi bi-arrow-clockwise me-1"></i>Resend OTP</button></form></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

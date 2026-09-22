@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile{% endblock %}
+{% block content %}
+<div class="py-4"><div class="row justify-content-center"><div class="col-lg-8">
+    <div class="card border-0 shadow-lg"><div class="card-header bg-transparent border-bottom border-secondary"><h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Your Profile</h4></div>
+    <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/>
+            <div class="text-center mb-4">
+                <div class="position-relative d-inline-block">
+                    <img src="{{ url_for('static', filename='images/default.svg') if not user.profile_pic or user.profile_pic=='default.svg' else '/uploads/'+user.profile_pic }}" class="rounded-circle shadow mb-3 border border-4 border-primary" width="140" height="140" style="object-fit:cover" id="preview" onerror="this.src='{{ url_for('static', filename='images/default.svg') }}'">
+                    <label class="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle p-2" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;" title="Change Profile Picture">
+                        <i class="bi bi-camera-fill"></i>
+                        <input type="file" name="profile_pic" accept="image/*" class="d-none" onchange="previewImage(this)">
+                    </label>
+                </div>
+                <p class="text-muted mt-2"><small>Click camera icon to change your profile picture (PNG, JPG, GIF - max 5MB)</small></p>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label">Full Name <span class="text-danger">*</span></label><input type="text" name="name" class="form-control bg-dark border-secondary text-white" value="{{ user.name }}" required></div>
+                <div class="col-md-6"><label class="form-label">Phone</label><input type="tel" name="phone" class="form-control bg-dark border-secondary text-white" value="{{ user.phone or '' }}" placeholder="+91-XXXXXXXXXX"></div>
+                <div class="col-md-6">
+                    <label class="form-label">Department</label>
+                    <select name="department" class="form-select bg-dark border-secondary text-white">
+                        <option value="">Select department...</option>
+                        {% for school, depts in departments.items() %}
+                            <optgroup label="{{ school }}">
+                                {% for dept in depts %}
+                                    <option value="{{ dept }}" {{ 'selected' if user.department == dept }}>{{ dept }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6"><label class="form-label">Joining Year</label><input type="text" inputmode="numeric" pattern="[0-9]*" name="joining_year" class="form-control bg-dark border-secondary text-white" value="{{ user.joining_year or '' }}"></div>
+                <div class="col-md-6"><label class="form-label">Passing Year</label><input type="text" inputmode="numeric" pattern="[0-9]*" name="passing_year" class="form-control bg-dark border-secondary text-white" value="{{ user.passing_year or '' }}"></div>
+                <div class="col-md-6"><label class="form-label">Roll Number</label><input type="text" name="roll_number" class="form-control bg-dark border-secondary text-white" value="{{ user.roll_number or '' }}" placeholder="University Roll No."></div>
+                {% if user.role == 'student' %}
+                {% set max_sem = degree_semesters.get(user.department, 8) %}
+                <div class="col-md-6" id="semesterField">
+                    <label class="form-label">Current Semester</label>
+                    <input type="hidden" name="student_year" id="student_year_hidden" value="{{ user.student_year or '' }}">
+                    <select id="student_year_display" class="form-select bg-dark border-secondary text-white"
+                            onchange="document.getElementById('student_year_hidden').value=this.value"
+                            {% if user.student_year == 0 %}disabled{% endif %}>
+                        <option value="">Select Semester...</option>
+                        {% for i in range(1, max_sem + 1) %}
+                            <option value="{{ i }}" class="sem-option" {{ 'selected' if user.student_year == i }}>Semester {{ i }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="mt-2">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" role="switch" name="currently_studying" id="currentlyStudying" value="1" {{ 'checked' if user.currently_studying != 0 }}>
+                            <label class="form-check-label" for="currentlyStudying">Currently Studying</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" name="degree_completed" id="degreeCompletedSwitch" value="1"
+                                   onchange="toggleDegreeCompleted(this.checked)"
+                                   {% if user.student_year == 0 %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold text-info" for="degreeCompletedSwitch">Degree Completed</label>
+                        </div>
+                        <small id="degreeCompletedNote" class="text-info {{ '' if user.student_year == 0 else 'd-none' }}">
+                            <i class="bi bi-info-circle me-1"></i>Degree Completed status will be sent to admin for approval. Once approved, your profile will be converted to alumni.
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-12"><label class="form-label">Bio (About You)</label><textarea name="bio" class="form-control bg-dark border-secondary text-white" rows="3" placeholder="Tell us about yourself..." maxlength="500">{{ user.bio or '' }}</textarea><small class="text-muted d-block mt-1">Keep it concise - max 500 characters</small></div>
+                <div class="col-12"><label class="form-label">Skills (comma-separated)</label><input type="text" name="skills" class="form-control bg-dark border-secondary text-white" value="{{ user.skills or '' }}" placeholder="e.g., Python, Web Development, ML"></div>
+                <div class="col-12"><label class="form-label">Interests</label><textarea name="interests" class="form-control bg-dark border-secondary text-white" rows="2" placeholder="What are you interested in?" maxlength="500">{{ user.interests or '' }}</textarea></div>
+                {% if user.role == 'student' %}
+                <div class="col-12"><label class="form-label">Internships</label><textarea name="internships" class="form-control bg-dark border-secondary text-white" rows="3" placeholder="Describe your internships..." maxlength="1000">{{ user.internships or '' }}</textarea></div>
+                <div class="col-12"><label class="form-label">Projects</label><textarea name="projects" class="form-control bg-dark border-secondary text-white" rows="3" placeholder="List your academic/personal projects..." maxlength="1000">{{ user.projects or '' }}</textarea></div>
+                {% endif %}
+                {% if user.role != 'student' %}
+                <div class="col-12"><label class="form-label">Work Experience</label>
+                    <div id="workExperiencesContainer">
+                    {% for w in user.work_experiences %}
+                        <div class="work-entry card bg-dark border-secondary mb-2 p-3"><div class="row g-2">
+                            <div class="col-md-4"><input type="text" name="job_title_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Job Title" value="{{ w.job_title or '' }}"></div>
+                            <div class="col-md-3"><input type="text" name="company_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Company" value="{{ w.company or '' }}"></div>
+                            <div class="col-md-3"><input type="text" name="role_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Role" value="{{ w.role or '' }}"></div>
+                            <div class="col-md-2 d-flex align-items-center gap-2">
+                                <label class="text-muted small"><input type="checkbox" name="is_current_{{ loop.index0 }}" value="1" onchange="toggleEndDate(this, {{ loop.index0 }})" {{ 'checked' if w.is_current }}> Current</label>
+                                <button type="button" class="btn btn-outline-danger btn-sm ms-auto" onclick="removeWorkEntry(this)"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            <div class="col-md-4"><label class="text-muted small d-block">Start Date</label><input type="date" name="start_date_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" value="{{ w.start_date or '' }}"></div>
+                            <div class="col-md-4"><label class="text-muted small d-block">End Date</label><input type="date" name="end_date_{{ loop.index0 }}" class="form-control form-control-sm bg-dark border-secondary text-white" value="{{ w.end_date or '' }}" {{ 'disabled' if w.is_current }}></div>
+                        </div></div>
+                    {% endfor %}
+                    </div>
+                    <div class="d-flex gap-2 mb-2"><button type="button" class="btn btn-outline-primary btn-sm" onclick="addWorkEntry()"><i class="bi bi-plus-lg"></i> Add another job</button></div>
+                    <template id="workEntryTemplate"><div class="work-entry card bg-dark border-secondary mb-2 p-3"><div class="row g-2">
+                        <div class="col-md-4"><input type="text" name="job_title_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Job Title"></div>
+                        <div class="col-md-3"><input type="text" name="company_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Company"></div>
+                        <div class="col-md-3"><input type="text" name="role_IDX" class="form-control form-control-sm bg-dark border-secondary text-white" placeholder="Role"></div>
+                        <div class="col-md-2 d-flex align-items-center gap-2">
+                            <label class="text-muted small"><input type="checkbox" name="is_current_IDX" value="1" onchange="toggleEndDate(this, 'IDX')"> Current</label>
+                            <button type="button" class="btn btn-outline-danger btn-sm ms-auto" onclick="removeWorkEntry(this)"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                        <div class="col-md-4"><label class="text-muted small d-block">Start Date</label><input type="date" name="start_date_IDX" class="form-control form-control-sm bg-dark border-secondary text-white"></div>
+                        <div class="col-md-4"><label class="text-muted small d-block">End Date</label><input type="date" name="end_date_IDX" class="form-control form-control-sm bg-dark border-secondary text-white"></div>
+                    </div></div></template>
+                </div>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between mt-4"><a href="{{ url_for('profile.view_profile', user_id=user.id) }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Cancel</a><button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Save Changes</button></div>
+        </form>
+        <hr class="border-secondary my-4">
+        <div class="text-center">
+            <button class="btn btn-outline-danger" onclick="confirmDeleteAccount()"><i class="bi bi-trash me-1"></i>Delete My Account</button>
+            <p class="text-muted small mt-2">This will permanently delete your account and all associated data. This cannot be undone.</p>
+        </div>
+    </div></div>
+</div></div></div>
+
+<div class="modal fade" id="deleteAccountModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Delete Account</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="bi bi-person-x display-3 text-danger d-block mb-3"></i>
+                <p class="fw-bold">Are you absolutely sure?</p>
+                <p class="text-muted small">All your data will be permanently removed including your profile, connections, messages, mentorships, job applications, and group memberships.</p>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="confirmDeleteCheck">
+                    <label class="form-check-label small text-muted" for="confirmDeleteCheck">I understand this action is irreversible</label>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteAccountBtn" onclick="executeDeleteAccount()" disabled><i class="bi bi-trash me-1"></i>Permanently Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDeleteAccount() {
+    document.getElementById('confirmDeleteCheck').checked = false;
+    document.getElementById('deleteAccountBtn').disabled = true;
+    new bootstrap.Modal(document.getElementById('deleteAccountModal')).show();
+}
+document.getElementById('confirmDeleteCheck').addEventListener('change', function() {
+    document.getElementById('deleteAccountBtn').disabled = !this.checked;
+});
+function executeDeleteAccount() {
+    const btn = document.getElementById('deleteAccountBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting...';
+    fetch('/api/profile/delete-account', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            showToast('Account deleted.', 'success');
+            setTimeout(function() { window.location.href = '/'; }, 1500);
+        } else {
+            showToast(d.message, 'danger');
+            btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash me-1"></i>Permanently Delete';
+        }
+    }).catch(function() {
+        showToast('Error deleting account', 'danger');
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash me-1"></i>Permanently Delete';
+    });
+}
+</script>
+
+<script>
+function addWorkEntry() {
+    const tmpl = document.getElementById('workEntryTemplate');
+    const container = document.getElementById('workExperiencesContainer');
+    const idx = container.children.length;
+    const html = tmpl.innerHTML.replace(/IDX/g, idx);
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    container.appendChild(div.firstElementChild);
+}
+function removeWorkEntry(btn) {
+    btn.closest('.work-entry').remove();
+}
+function toggleEndDate(cb, idx) {
+    const entry = cb.closest('.work-entry');
+    const endDate = entry.querySelector('input[name="end_date_'+idx+'"]');
+    if (endDate) endDate.disabled = cb.checked;
+}
+const degreeSemesters = {{ degree_semesters | tojson }};
+
+function updateSemesterOptions() {
+    const dept = document.querySelector('select[name="department"]').value;
+    const sem = document.getElementById('student_year_display');
+    const hidden = document.getElementById('student_year_hidden');
+    if (!sem) return;
+    const currentVal = hidden.value;
+    const maxSem = degreeSemesters[dept] || 8;
+    sem.querySelectorAll('.sem-option').forEach(o => o.remove());
+    for (let i = 1; i <= maxSem; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = 'Semester ' + i;
+        opt.className = 'sem-option';
+        sem.appendChild(opt);
+    }
+    if (currentVal > 0 && currentVal <= maxSem) { sem.value = currentVal; hidden.value = currentVal; }
+    else { sem.value = ''; hidden.value = ''; }
+}
+
+function toggleDegreeCompleted(checked) {
+    const sem = document.getElementById('student_year_display');
+    const hidden = document.getElementById('student_year_hidden');
+    const csCheck = document.getElementById('currentlyStudying');
+    const note = document.getElementById('degreeCompletedNote');
+    if (checked) {
+        sem.disabled = true;
+        sem.value = '';
+        hidden.value = '0';
+        note.classList.remove('d-none');
+        if (csCheck) csCheck.checked = false;
+    } else {
+        sem.disabled = false;
+        hidden.value = '';
+        note.classList.add('d-none');
+    }
+}
+
+function toggleCurrentlyStudying(checked) {
+    const dcSwitch = document.getElementById('degreeCompletedSwitch');
+    if (checked && dcSwitch && dcSwitch.checked) {
+        dcSwitch.checked = false;
+        toggleDegreeCompleted(false);
+    }
+}
+
+document.getElementById('currentlyStudying')?.addEventListener('change', function() {
+    toggleCurrentlyStudying(this.checked);
+});
+
+document.querySelector('select[name="department"]').addEventListener('change', function() {
+    const dcSwitch = document.getElementById('degreeCompletedSwitch');
+    if (dcSwitch && !dcSwitch.checked) {
+        updateSemesterOptions();
+    }
+});
+if (!document.getElementById('degreeCompletedSwitch').checked) {
+    updateSemesterOptions();
+}
+</script>
+
+<script>
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Check file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('File size must be less than 5MB', 'danger');
+            input.value = '';
+            return;
+        }
+        
+        // Check file type
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            showToast('Only PNG, JPG, and GIF files are allowed', 'danger');
+            input.value = '';
+            return;
+        }
+        
+        // Preview image
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+</script>
+{% endblock %}

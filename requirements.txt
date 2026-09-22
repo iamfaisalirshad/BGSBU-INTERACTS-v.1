@@ -1,0 +1,9 @@
+Flask==3.0.0
+flask-bcrypt==1.0.1
+mysql-connector-python==8.2.0
+Werkzeug==3.0.1
+Pillow==11.0.0
+email-validator==2.1.0
+python-dotenv==1.0.0
+secure==0.3.0
+requests>=2.31.0
